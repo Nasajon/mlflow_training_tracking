@@ -20,7 +20,6 @@ class KerasRegressionModelOperatorDataFrame(keras.Sequential, ModelOperatorInter
         super().compile(**kwargs)
 
     def fit(self, train_x, train_y, eval_x, eval_y, **kwargs) -> None:
-        print("fitting")
         kwargs['validation_data'] = (eval_x, eval_y)
         super().fit(x=train_x, y=train_y, **kwargs)
         super().compile()
