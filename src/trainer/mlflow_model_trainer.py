@@ -146,7 +146,7 @@ class MachineLearningModelTrainer:
         return predictions
 
     def log(self, _type, log_obj, prepend=''):
-
+        log_obj = log_obj.copy()
         if isinstance(log_obj, list):
             for list_obj in log_obj:
                 self.log(_type, list_obj, prepend)
@@ -155,7 +155,18 @@ class MachineLearningModelTrainer:
         if not self.mlflow_logging_enabled:
             print(log_obj)
             return
+
         if _type == 'params':
+            # special case for nn layers because of 250 char limit on param log
+            if log_obj.get('layers', False):
+                index = 0
+                layers = {}
+                for layer in log_obj['layers']:
+                    layers[f'layer_{index}'] = layer
+                    index += 1
+                self.log('params', layers, prepend)
+                del log_obj['layers']
+
             log_obj = prepend_key(log_obj, prepend)
             mlflow.log_params(log_obj)
 
