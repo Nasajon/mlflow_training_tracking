@@ -1,5 +1,6 @@
 import mlflow
 import os
+from datetime import datetime
 from service_interfaces.data_interface import DataOperatorInterface
 from service_interfaces.model_interface import ModelOperatorInterface
 from service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
@@ -84,6 +85,7 @@ class MachineLearningModelTrainer:
 
     def end_run(self):
         mlflow.end_run()
+        print(self.get_current_time() + " - Run finished.")
 
     def crate_folder_structure(self, run_folder_path,
                                model_folder,
@@ -107,14 +109,14 @@ class MachineLearningModelTrainer:
             os.makedirs(self.error_log_folder_path)
 
     def load_data(self):
-        print("Loading Data...")
+        self.fprint('Loading Data...', end=' ')
         self.data_interface.load_data(
             self.train_data, self.eval_data, target_column=self.target_column)
         self.train_x = self.data_interface.get_train_x()
         self.train_y = self.data_interface.get_train_y()
         self.eval_x = self.data_interface.get_eval_x()
         self.eval_y = self.data_interface.get_eval_y()
-        print("Data loaded.")
+        self.fprint('Data loaded.')
         return self
 
     def instantiate_model(self):
@@ -126,14 +128,14 @@ class MachineLearningModelTrainer:
         print(kwargs)
 
     def train(self):
-        print("Training Model..")
+        self.fprint('Training Model..')
         self.model_interface.fit(
             train_x=self.train_x,
             train_y=self.train_y,
             eval_x=self.eval_x,
             eval_y=self.eval_y,
             **self.training_parameters)
-        print("Model trained.")
+        self.fprint('Model trained.')
         return self
 
     def save_model(self):
@@ -151,7 +153,14 @@ class MachineLearningModelTrainer:
         predictions = self.model_interface.predict(data)
         return predictions
 
+    def fprint(self, text, end='\n'):
+        now = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S.%f")
+        print(f'{now}- MFTT - {text}', end=end)
+
     def log(self, _type, log_obj, prepend=''):
+        self.fprint(f"Logging {_type}...", end=' ')
+
         if isinstance(log_obj, list):
             log_obj = log_obj.copy()
             for list_obj in log_obj:
@@ -187,25 +196,27 @@ class MachineLearningModelTrainer:
 
         if _type == 'artifacts':
             mlflow.log_artifacts(log_obj)
+        self.fprint('Done.')
 
     def set_tags(self, **tags):
+        self.fprint('Setting tags...', end=' ')
         if not self.mlflow_logging_enabled:
             print(tags)
             return
         mlflow.set_tags(tags)
+        self.fprint('Done.')
 
     def pipeline(self):
         try:
             print('*'*20)
             print('*     Starting     *')
             print('*'*20)
-            print(f'Model Run: {self.run_id}')
+            self.fprint(f'Model Run: {self.run_id}')
             self.set_tags(model_id=self.model_id,
                           version=self.model_version,
                           state='running',
                           model_type=self.model_interface.model_type,
                           **self.model_tags)
-            print("Logging params...")
             self.log('params', self.extra_model_params, prepend='extra.')
             self.log('params', {'train_data': str(self.train_data),
                                 'eval_data': str(self.eval_data),
@@ -217,8 +228,8 @@ class MachineLearningModelTrainer:
             self.load_data()
             self.train()
 
-            print("Logging metrics..")
-            self.log('metrics', self.get_train_metrics(), prepend='training.')
+            self.log('metrics', self.get_train_metrics(),
+                     prepend='training.')
             self.log('metrics', self.get_eval_metrics(), prepend='eval.')
             for metric in self.custom_eval_metrics:
                 metric_value = getattr(self.metrics_interface, metric)()
@@ -227,15 +238,13 @@ class MachineLearningModelTrainer:
                 metric_value = getattr(self.model_interface, metric)()
                 self.log('metrics', metric_value, prepend='custom.')
             self.save_model()
-            print("Logging artifacts...")
             self.log('artifacts', self.run_folder_path)
             self.set_tags(state='success')
             self.end_run()
-            print("Run finished.")
 
         except Exception as e:
             self.set_tags(state='failed')
-            print("Run Failed")
+            self.fprint('Run Failed')
             import traceback
             print(traceback.format_exc())
             with open(self.error_log_path, 'w') as f:
