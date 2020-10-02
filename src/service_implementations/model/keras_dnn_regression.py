@@ -13,16 +13,13 @@ class KerasRegressionModelOperatorDataFrame(keras.Sequential, ModelOperatorInter
         layers_rep = kwargs['layers']
         layers = [getattr(keras.layers, layer['type'])(*layer.get('args', []),
                                                        **layer.get('kwargs', {})) for layer in layers_rep]
-
         del kwargs['layers']
-        print(kwargs)
         super().__init__(layers=layers, name=self.model_id_version)
         super().compile(**kwargs)
 
     def fit(self, train_x, train_y, eval_x, eval_y, **kwargs) -> None:
         kwargs['validation_data'] = (eval_x, eval_y)
         super().fit(x=train_x, y=train_y, **kwargs)
-        super().compile()
 
     def save(self, folder_path) -> None:
         path = os.path.join(folder_path, self.model_id_version)
