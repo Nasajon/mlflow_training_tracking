@@ -4,6 +4,8 @@ from service_interfaces.data_interface import DataOperatorInterface
 
 
 class BigQueryToDataFrame(DataOperatorInterface):
+    data_loaded = False
+
     def __init__(self):
         self.client = bigquery.Client()
 
@@ -18,27 +20,18 @@ class BigQueryToDataFrame(DataOperatorInterface):
         Returns:
             self
         """
-        # self.load_mock(target_column)
-        # return self
+        # get data that was previous loaded
+        if self.data_loaded:
+            return
+
         df = self.client.query(train_sql).to_dataframe()  # API request
         self.train_y = df.pop(target_column)
         self.train_X = df
         df = self.client.query(eval_sql).to_dataframe()  # API request
         self.eval_y = df.pop(target_column)
         self.eval_X = df
+        self.data_loaded = True
         return self
-
-    def load_mock(self, target_column):
-        data_train = {'X': [1, 2, 3, 4, 5],
-                      target_column: [1, 2, 3, 4, 5]}
-        data_test = {'X': [6, 7, 8, 9, 10],
-                     target_column: [6, 7, 8, 9, 10]}
-        df_train = pd.DataFrame(data_train, columns=['X', target_column])
-        df_test = pd.DataFrame(data_test, columns=['X', target_column])
-        self.train_y = df_train.pop(target_column)
-        self.train_X = df_train
-        self.eval_y = df_test.pop(target_column)
-        self.eval_X = df_test
 
     def get_train_x(self) -> DataFrame:
         """Return X values as DataFrame
