@@ -34,6 +34,7 @@ class MachineLearningModelTrainer:
                  model_folder='model_artifact',
                  log_folder='log',
                  error_log_folder='log',
+                 extra_model_params={},
                  model_tags={},
                  mlflow_logging_enabled=True):
 
@@ -45,7 +46,8 @@ class MachineLearningModelTrainer:
             raise TypeError
 
         self.run_id = self.setup_mlflow(mlflow_server,
-                                        mlflow_experiment_name)
+                                        mlflow_experiment_name,
+                                        model_id)
         self.crate_folder_structure(run_folder_path,
                                     model_folder,
                                     log_folder,
@@ -69,15 +71,19 @@ class MachineLearningModelTrainer:
         self.custom_eval_metrics = custom_eval_metrics
         self.custom_train_metrics = custom_train_metrics
         self.model_tags = model_tags
+        self.extra_model_params = extra_model_params
         self.mlflow_logging_enabled = mlflow_logging_enabled
 
-    def setup_mlflow(self, mlflow_server, mlflow_experiment_name):
+    def setup_mlflow(self, mlflow_server, mlflow_experiment_name, model_id):
         mlflow.set_tracking_uri(mlflow_server)
         mlflow.set_experiment(mlflow_experiment_name)
-        run = mlflow.start_run()
+        run = mlflow.start_run(run_name=model_id)
         run_id = run.info.run_id
 
         return run_id
+
+    def end_run(self):
+        mlflow.end_run()
 
     def crate_folder_structure(self, run_folder_path,
                                model_folder,
@@ -200,6 +206,7 @@ class MachineLearningModelTrainer:
                           model_type=self.model_interface.model_type,
                           **self.model_tags)
             print("Logging params...")
+            self.log('params', self.extra_model_params, prepend='extra.')
             self.log('params', {'train_data': str(self.train_data),
                                 'eval_data': str(self.eval_data),
                                 'target_column': str(self.target_column)})
@@ -223,6 +230,7 @@ class MachineLearningModelTrainer:
             print("Logging artifacts...")
             self.log('artifacts', self.run_folder_path)
             self.set_tags(state='success')
+            self.end_run()
             print("Run finished.")
 
         except Exception as e:
@@ -234,3 +242,4 @@ class MachineLearningModelTrainer:
                 f.write(str(e))
                 f.write(traceback.format_exc())
             self.log('artifact', self.error_log_path)
+            self.end_run()
