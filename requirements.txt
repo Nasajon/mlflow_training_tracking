@@ -4,3 +4,5 @@ mlflow
 pandas
 xgboost
 sklearn
+numpy
+tensorflow
