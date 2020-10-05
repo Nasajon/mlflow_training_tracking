@@ -7,25 +7,5 @@ class EvaluationMetricsOperatorInterface(metaclass=ABCMeta):
         raise NotImplemented
 
     @abstractmethod
-    def explained_variance_score(self):
-        raise NotImplemented
-
-    @abstractmethod
-    def mean_absolute_error(self):
-        raise NotImplemented
-
-    @abstractmethod
-    def mean_squared_error(self):
-        raise NotImplemented
-
-    @abstractmethod
-    def median_absolute_error(self):
-        raise NotImplemented
-
-    @abstractmethod
-    def r2_score(self):
-        raise NotImplemented
-
-    @abstractmethod
-    def max_error(self):
+    def get_eval_metrics(self, **kwargs):
         raise NotImplemented

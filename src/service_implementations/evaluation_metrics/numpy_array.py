@@ -1,10 +1,10 @@
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, median_absolute_error, r2_score, max_error
 from sklearn.metrics._regression import _check_reg_targets
-from service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
+from service_interfaces.evaluation_regression_metrics_interface import EvaluationRegressionsMetricsOperatorInterface
 import numpy as np
 
 
-class EvaluationMetricsNumpyArray(EvaluationMetricsOperatorInterface):
+class EvaluationRegressionMetricsNumpyArray(EvaluationRegressionsMetricsOperatorInterface):
     def load_data(self, y_true, y_pred, *args, **kwargs):
         y_type, y_true, y_pred, multioutput = _check_reg_targets(
             y_true, y_pred, multioutput='uniform_average')
@@ -45,14 +45,3 @@ class EvaluationMetricsNumpyArray(EvaluationMetricsOperatorInterface):
                     "metrics": {"percentile_absolute_error": perc[index]}, 'step': index
                 })
         return metric_list
-
-    def get_eval_metrics(self, **kwargs):
-        metrics = {}
-        metrics["explained_variance_score"] = self.explained_variance_score()
-        metrics["mean_absolute_error"] = self.mean_absolute_error()
-        metrics["mean_squared_error"] = self.mean_squared_error()
-        metrics["median_absolute_error"] = self.median_absolute_error()
-        metrics["r2_score"] = self.r2_score()
-        metrics["max_error"] = self.max_error()
-        metrics["mean_abs_perc_error"] = self.mean_abs_perc_error()
-        return {"metrics": metrics}

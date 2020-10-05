@@ -1,11 +1,11 @@
 from service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
-from service_implementations.evaluation_metrics.numpy_array import EvaluationMetricsNumpyArray
+from service_implementations.evaluation_metrics.numpy_array import EvaluationRegressionMetricsNumpyArray
 from mixin.bigquery_mixin import BigQueryMixin
 import numpy as np
 from google.cloud import bigquery
 
 
-class EvaluationMetricsBigQueryLocationNumpyArray(EvaluationMetricsNumpyArray, BigQueryMixin):
+class EvaluationRegressionMetricsBigQueryLocationNumpyArray(EvaluationRegressionMetricsNumpyArray, BigQueryMixin):
     def __init__(self):
         self.client = bigquery.Client()
         super().__init__()
