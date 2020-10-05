@@ -1,5 +1,7 @@
 import mlflow
 import os
+import asyncio as aio
+from helpers.util import force_async
 from datetime import datetime
 from service_interfaces.data_interface import DataOperatorInterface
 from service_interfaces.model_interface import ModelOperatorInterface
@@ -21,6 +23,8 @@ def prepend_key(data_obj: object, prepend: str):
 
 
 class MachineLearningModelTrainer:
+    aio_tasks = set()
+    max_aio_tasks = 20
 
     def __init__(self,
                  mlflow_server,
@@ -83,9 +87,17 @@ class MachineLearningModelTrainer:
 
         return run_id
 
-    def end_run(self):
+    async def end_run(self):
+        await self._end_run()
+
+    async def _end_run(self):
+        if len(self.aio_tasks) > 0:
+            self.fprint("Waiting async tasks")
+            _done, self.aio_tasks = await aio.wait(self.aio_tasks)
+            self.raise_task(_done)
+
         mlflow.end_run()
-        print(self.get_current_time() + " - Run finished.")
+        self.fprint("Run finished.")
 
     def crate_folder_structure(self, run_folder_path,
                                model_folder,
@@ -116,16 +128,15 @@ class MachineLearningModelTrainer:
         self.train_y = self.data_interface.get_train_y()
         self.eval_x = self.data_interface.get_eval_x()
         self.eval_y = self.data_interface.get_eval_y()
-        self.fprint('Data loaded.')
+        self.fprint('Done.')
         return self
 
     def instantiate_model(self):
+        self.fprint('Instantiating model...', end=' ')
         self.model_interface.instantiate_model(
             self.model_id, self.model_version, **self.model_parameters)
+        self.fprint('Done.')
         return self
-
-    def print_kw(self, **kwargs):
-        print(kwargs)
 
     def train(self):
         self.fprint('Training Model..')
@@ -139,7 +150,9 @@ class MachineLearningModelTrainer:
         return self
 
     def save_model(self):
+        self.fprint('Saving model...', end=' ')
         self.model_interface.save(self.model_folder_path)
+        self.fprint('Done.')
 
     def get_eval_metrics(self):
         y_pred = self.predict(self.eval_x)
@@ -156,22 +169,24 @@ class MachineLearningModelTrainer:
     def fprint(self, text, end='\n'):
         now = datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S.%f")
-        print(f'{now}- MFTT - {text}', end=end)
+        print(f'{now}- MFTT - {text}', end=end, flush=True)
 
-    def log(self, _type, log_obj, prepend=''):
-        self.fprint(f"Logging {_type}...", end=' ')
+    def raise_task(self, task_set):
+        for task in task_set:
+            if task.exception():
+                raise task.exception()
+
+    async def async_log(self, _type, log_obj, prepend=''):
+        self.fprint(
+            f"Addeding log to aio tasks. {len(self.aio_tasks)} tasks pending")
 
         if isinstance(log_obj, list):
             log_obj = log_obj.copy()
             for list_obj in log_obj:
-                self.log(_type, list_obj, prepend)
+                await self.async_log(_type, list_obj, prepend)
             return
         if isinstance(log_obj, dict):
             log_obj = log_obj.copy()
-
-        if not self.mlflow_logging_enabled:
-            print(log_obj)
-            return
 
         if _type == 'params':
             # special case for nn layers because of 250 char limit on param log
@@ -181,9 +196,30 @@ class MachineLearningModelTrainer:
                 for layer in log_obj['layers']:
                     layers[f'layer_{index}'] = layer
                     index += 1
-                self.log('params', layers, prepend)
+                await self.async_log('params', layers, prepend)
                 del log_obj['layers']
 
+        if len(self.aio_tasks) >= self.max_aio_tasks:
+            self.fprint(f"Tasks set full, waiting any task to complete")
+            _done, self.aio_tasks = await aio.wait(
+                self.aio_tasks, return_when=aio.FIRST_COMPLETED)
+            self.raise_task(_done)
+
+        self.aio_tasks.add(aio.create_task(
+            self._async_log(_type, log_obj, prepend)))
+
+    @force_async
+    def _async_log(self, _type, log_obj, prepend):
+        self.log(_type, log_obj, prepend)
+
+    def log(self, _type, log_obj, prepend=''):
+        self.fprint(f"Logging {_type}...")
+
+        if not self.mlflow_logging_enabled:
+            print(log_obj)
+            return
+
+        if _type == 'params':
             log_obj = prepend_key(log_obj, prepend)
             mlflow.log_params(log_obj)
 
@@ -196,7 +232,6 @@ class MachineLearningModelTrainer:
 
         if _type == 'artifacts':
             mlflow.log_artifacts(log_obj)
-        self.fprint('Done.')
 
     def set_tags(self, **tags):
         self.fprint('Setting tags...', end=' ')
@@ -206,7 +241,7 @@ class MachineLearningModelTrainer:
         mlflow.set_tags(tags)
         self.fprint('Done.')
 
-    def pipeline(self):
+    async def _pipeline(self):
         try:
             print('*'*20)
             print('*     Starting     *')
@@ -217,30 +252,31 @@ class MachineLearningModelTrainer:
                           state='running',
                           model_type=self.model_interface.model_type,
                           **self.model_tags)
-            self.log('params', self.extra_model_params, prepend='extra.')
-            self.log('params', {'train_data': str(self.train_data),
-                                'eval_data': str(self.eval_data),
-                                'target_column': str(self.target_column)})
-            self.log('params', self.model_parameters, prepend='model.')
-            self.log('params', self.training_parameters, prepend='training.')
+            await self.async_log('params', self.extra_model_params, prepend='extra.')
+            await self.async_log('params', {'train_data': str(self.train_data),
+                                            'eval_data': str(self.eval_data),
+                                            'target_column': str(self.target_column)})
+            await self.async_log('params', self.model_parameters, prepend='model.')
+            await self.async_log('params', self.training_parameters,
+                                 prepend='training.')
 
             self.instantiate_model()
             self.load_data()
             self.train()
 
-            self.log('metrics', self.get_train_metrics(),
-                     prepend='training.')
-            self.log('metrics', self.get_eval_metrics(), prepend='eval.')
+            await self.async_log('metrics', self.get_train_metrics(),
+                                 prepend='training.')
+            await self.async_log('metrics', self.get_eval_metrics(), prepend='eval.')
             for metric in self.custom_eval_metrics:
                 metric_value = getattr(self.metrics_interface, metric)()
-                self.log('metrics', metric_value, prepend='custom.')
+                await self.async_log('metrics', metric_value, prepend='custom.')
             for metric in self.custom_train_metrics:
                 metric_value = getattr(self.model_interface, metric)()
-                self.log('metrics', metric_value, prepend='custom.')
+                await self.async_log('metrics', metric_value, prepend='custom.')
             self.save_model()
             self.log('artifacts', self.run_folder_path)
             self.set_tags(state='success')
-            self.end_run()
+            await self.end_run()
 
         except Exception as e:
             self.set_tags(state='failed')
@@ -251,4 +287,7 @@ class MachineLearningModelTrainer:
                 f.write(str(e))
                 f.write(traceback.format_exc())
             self.log('artifact', self.error_log_path)
-            self.end_run()
+            await self.end_run()
+
+    def pipeline(self):
+        aio.run(self._pipeline())
