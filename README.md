@@ -1,33 +1,143 @@
-Software para treinar modelos de machine learning e fazer o tracking na plataforma MLflow.
+Software for training machine learning models and tracking in MLflow platform.
+
+This software is developed to easy the work for changing the pieces around an machine learning day of work, coding the interfaces, core logging and training once and using as needed.
+
+This project does nothing in the feature engineering/selection and there is no plan to do so. Feature engineering is a hard problem and open-world/hand-made.
+Your data feature engineering/selection must be done beforehand.
+
+MLflow Training Tracking is build around interfaces and a common __data_type__:
+- __data_type__
+    - Data used across the multiple interfaces. E.g.: Pandas _DataFrame_
+- Data Operator Interface
+    - Retrieves data from source and return as __data_type__
+
+- Model Operator Interface
+    - receives __data_type__ retrieved from Data Interface and use to train the model then return __data_type__ after prediction on evaluation dataset
+
+- Evaluation Metrics Operator Interface
+    - receives data y_true from Data Interface and y_pred from Model Interface, both as __data_type__. Calculate the metrics and return it
+
+MLflow Training Tracking will by default set some tags, log every parameter and the metrics from Model Interface training and Metrics Interface.
+
+Data Operator Interface must inherit from DataOperatorInterface and implement 
+- methods
+    - load_data
+    - get_train_x
+    - get_train_y
+    - get_eval_x
+    - get_eval_y
+
+Model Operator Interface must inherit from ModelOperatorInterface and implement 
+
+- properties
+    - model_type
+- methods
+    - instantiate_model
+    - fit
+    - predict
+    - save
+    - load
+    - get_train_metrics
+
+Evaluation Metrics Operator Interface must inherit from EvaluationMetricsOperatorInterface and implement
+- methods
+    - load_data
+    - get_eval_metrics
+
+Regression Model
+- methods
+    - explained_variance_score
+    - mean_absolute_error
+    - mean_squared_error
+    - median_absolute_error
+    - r2_score
+    - max_error
+
+Classification Model
+- methods
+    - TBD
 
 
-Implementar fase 1 do pipeline para treinar modelos de machine learning e fazer o tracking do treinamentos e resultado dos testes no MLflow
+Current state of implemented interfaces:
+```
+service_implementations
+```
+- Data Operator Interface
+    ```
+    data
+    ```
+    - CSV to DataFrame
+        ```
+        csv_to_dataframe.FileToDataFrame
+        ```
+        - receives path to file and load it into a DataFrame
+    - BigQuery to DataFrame
+        ```
+        bigquery_to_dataframe.BigQueryToDataFrame
+        ```    
+        - receives SQL Queries, run query and load it into a DataFrame
+    - BigQuery Location (to BigQuery Location)
+        ```
+        bigquery_location.DataOperatorBigQueryLocation
+        ```     
+        - receives a dictionary that identify a table
+        - Dictionary structure:
+        ```
+        {
+            'columns': ['feature_column1', 'feature_column2', 'target_column'], #BigQuery columns SELECT clause
+            'id_column': 'id_column', #used to identify an row
+            'table': 'project.database.table', #BigQuery table FROM clause
+            'order': 'id_column', #BigQuery ORDER BY clause, BQ does not have natural order, we need to enforce order to get the same results over multiple queries
+            'limit': 7300 #BigQuery LIMIT clause
+        }
+        ```
 
-A implementação usará três interfaces:
-Interface de dado - Responsável por ter o dado na representação necessária
-Interface de modelo - Recebe o dado da interface de dado e faz o treinamento do modelo
-Interface de avaliação - Calcula as métricas de teste do modelo treinado
-Os dados pertinentes de cada etapa são armazenados no servidor do MLflow assim como os artefatos gerados
+- Model Operator Interface
+BigQueryDNNRegressionModelOperatorBigQueryLocation
+    ```
+    model
+    ```
+    - BigQuery DNN Regression (to BigQuery Location)
+        ```
+        bigquery_dnn_regression.BigQueryDNNRegressionModelOperatorBigQueryLocation
+        ```
+        - receives BigQuery Location and train a DNN model using BigQuery. See [BigQuery manual](https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-create-dnn-models) for parameters
+    - BigQuery XGB Tree Regression (to BigQuery Location)
+        ```
+        bigquery_xgb_regression.BigQueryXGBRegressionModelOperatorBigQueryLocation
+        ```    
+        - receives BigQuery Location and train a XGB model using BigQuery. See [BigQuery manual](https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-create-boosted-tree) for parameters
+    - Keras DNN Regression (to DataFrame)
+        ```
+        keras_dnn_regression.KerasRegressionModelOperatorDataFrame
+        ```      
+        - receives DataFrame and train a DNN model using Keras. See [Keras manual](https://keras.io/api/layers/) for parameters
+    - XGB Tree Regression (to DataFrame)
+        ```
+        xgb_regression.XGBRegressionModelOperatorDataFrame
+        ```      
+        - receives DataFrame and train a XGB Tree model using XGB. See [XGB manual](https://xgboost.readthedocs.io/en/latest/parameter.html) for parameters.
 
-As interfaces precisam se 'conversar' com o mesmo tipo de dado, sendo assim necessário implementar uma interface por modelo e por tipo de dado
+- Evaluation Metrics Operator Interface
+    ```
+    evaluation_metrics
+    ```
+    - Regression
+        - BigQuery Location (to NumPy Array)
+            ```
+            bigquery_location.EvaluationRegressionMetricsBigQueryLocationNumpyArray
+            ```         
+            - receives BigQuery Location, query it and get result as Numpy Array, then calculate the metrics locally
+        - NumpyArray (to NumPy Array)
+            ```
+            numpy_array.EvaluationRegressionMetricsNumpyArray
+            ```         
+            - receives Numpy/DataFrame, and calculate the metrics
+    - Classification
+        - None
 
-Nessa primeira fase serão implementadas as seguintes interfaces:
-Interface de dado - Arquivo para DataFrame, BigQuery para DataFrame, BigQuery Location (URI)
-Interface de modelo - XGBoost Regression (executado localmente) e BigQuery XGBoost Regression (executado na plataforma bigquery/ia platform no gcp)
-Interface de Avaliação - Avaliação de Numpy Array e Avaliação de BigQuery Location em NumPy Array
+Known issues:
+BigQuery Location is not SQL-injection-free, and I don't care
 
-Nessa primeira fase apenas as métricas de regressão foram implementadas, são elas:
-explained_variance_score
-mean_absolute_error
-mean_squared_error
-median_absolute_error
-r2_score
-max_error
-mean_abs_perc_error
-percentile_absolute_error
-
-Os dados de treinamento são específicos para cada modelo.
-
-Os artefatos gerados nessa etapa são os logs de error e o modelo para a implementação de XGBoost local, a implementação de BigQuery XGBoost ainda não salva o modelo no repositório de artefatos, mas o mesmo pode ser exportado na plataforma, essa exportação será feita posteriormente, assim como os logs de execução.
-
-Também são armazenados no servidor todos os parâmetros utilizados para o treinamento
+Future work:
+Add test dataset
