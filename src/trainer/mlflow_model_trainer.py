@@ -23,7 +23,6 @@ def prepend_key(data_obj: object, prepend: str):
 
 
 class MachineLearningModelTrainer:
-    aio_tasks = set()
     max_aio_tasks = 20
 
     def __init__(self,
@@ -88,14 +87,14 @@ class MachineLearningModelTrainer:
         return run_id
 
     async def end_run(self):
-        await self._end_run()
-
-    async def _end_run(self):
         if len(self.aio_tasks) > 0:
             self.fprint("Waiting async tasks")
             _done, self.aio_tasks = await aio.wait(self.aio_tasks)
             self.raise_task(_done)
 
+        self._end_run()
+
+    def _end_run(self):
         mlflow.end_run()
         self.fprint("Run finished.")
 
@@ -178,7 +177,7 @@ class MachineLearningModelTrainer:
 
     async def async_log(self, _type, log_obj, prepend=''):
         self.fprint(
-            f"Addeding log to aio tasks. {len(self.aio_tasks)} tasks pending")
+            f"Addeding log to async tasks.")
 
         if isinstance(log_obj, list):
             log_obj = log_obj.copy()
@@ -210,9 +209,9 @@ class MachineLearningModelTrainer:
 
     @force_async
     def _async_log(self, _type, log_obj, prepend):
-        self.log(_type, log_obj, prepend)
+        self.__log(_type, log_obj, prepend)
 
-    def log(self, _type, log_obj, prepend=''):
+    def __log(self, _type, log_obj, prepend=''):
         self.fprint(f"Logging {_type}...")
 
         if not self.mlflow_logging_enabled:
@@ -274,7 +273,7 @@ class MachineLearningModelTrainer:
                 metric_value = getattr(self.model_interface, metric)()
                 await self.async_log('metrics', metric_value, prepend='custom.')
             self.save_model()
-            self.log('artifacts', self.run_folder_path)
+            self.async_log('artifacts', self.run_folder_path)
             self.set_tags(state='success')
             await self.end_run()
 
@@ -286,8 +285,9 @@ class MachineLearningModelTrainer:
             with open(self.error_log_path, 'w') as f:
                 f.write(str(e))
                 f.write(traceback.format_exc())
-            self.log('artifact', self.error_log_path)
+            self.async_log('artifact', self.error_log_path)
             await self.end_run()
 
     def pipeline(self):
+        self.aio_tasks = set()
         aio.run(self._pipeline())
