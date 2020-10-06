@@ -12,10 +12,10 @@ MLflow Training Tracking is build around interfaces and a common __data_type__:
     - Retrieves data from source and return as __data_type__
 
 - Model Operator Interface
-    - receives __data_type__ retrieved from Data Interface and use to train the model then return __data_type__ after prediction on evaluation dataset
+    - Receives __data_type__ retrieved from Data Interface and use to train the model then return __data_type__ after prediction on evaluation dataset
 
 - Evaluation Metrics Operator Interface
-    - receives data y_true from Data Interface and y_pred from Model Interface, both as __data_type__. Calculate the metrics and return it
+    - Receives data y_true from Data Interface and y_pred from Model Interface, both as __data_type__. Calculate the metrics and return it
 
 MLflow Training Tracking will by default set some tags, log every parameter and the metrics from Model Interface training and Metrics Interface.
 
@@ -70,17 +70,17 @@ service_implementations
         ```
         csv_to_dataframe.FileToDataFrame
         ```
-        - receives path to file and load it into a DataFrame
+        - Receives path to file and load it into a DataFrame
     - BigQuery to DataFrame
         ```
         bigquery_to_dataframe.BigQueryToDataFrame
         ```    
-        - receives SQL Queries, run query and load it into a DataFrame
+        - Receives SQL Queries, run query and load it into a DataFrame
     - BigQuery Location (to BigQuery Location)
         ```
         bigquery_location.DataOperatorBigQueryLocation
         ```     
-        - receives a dictionary that identify a table
+        - Receives a dictionary that identify a table
         - Dictionary structure:
         ```
         {
@@ -106,17 +106,17 @@ BigQueryDNNRegressionModelOperatorBigQueryLocation
         ```
         bigquery_xgb_regression.BigQueryXGBRegressionModelOperatorBigQueryLocation
         ```    
-        - receives BigQuery Location and train a XGB model using BigQuery. See [BigQuery manual](https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-create-boosted-tree) for parameters
+        - Receives BigQuery Location and train a XGB model using BigQuery. See [BigQuery manual](https://cloud.google.com/bigquery-ml/docs/reference/standard-sql/bigqueryml-syntax-create-boosted-tree) for parameters
     - Keras DNN Regression (to DataFrame)
         ```
         keras_dnn_regression.KerasRegressionModelOperatorDataFrame
         ```      
-        - receives DataFrame and train a DNN model using Keras. See [Keras manual](https://keras.io/api/layers/) for parameters
+        - Receives DataFrame and train a DNN model using Keras. See [Keras manual](https://keras.io/api/layers/) for parameters
     - XGB Tree Regression (to DataFrame)
         ```
         xgb_regression.XGBRegressionModelOperatorDataFrame
         ```      
-        - receives DataFrame and train a XGB Tree model using XGB. See [XGB manual](https://xgboost.readthedocs.io/en/latest/parameter.html) for parameters.
+        - Receives DataFrame and train a XGB Tree model using XGB. See [XGB manual](https://xgboost.readthedocs.io/en/latest/parameter.html) for parameters.
 
 - Evaluation Metrics Operator Interface
     ```
@@ -127,17 +127,19 @@ BigQueryDNNRegressionModelOperatorBigQueryLocation
             ```
             bigquery_location.EvaluationRegressionMetricsBigQueryLocationNumpyArray
             ```         
-            - receives BigQuery Location, query it and get result as Numpy Array, then calculate the metrics locally
+            - Receives BigQuery Location, query it and get result as Numpy Array, then calculate the metrics locally
         - NumpyArray (to NumPy Array)
             ```
             numpy_array.EvaluationRegressionMetricsNumpyArray
             ```         
-            - receives Numpy/DataFrame, and calculate the metrics
+            - Receives Numpy/DataFrame, and calculate the metrics
     - Classification
         - None
 
 Known issues:
+
 BigQuery Location is not SQL-injection-free, and I don't care
 
 Future work:
+
 Add test dataset
