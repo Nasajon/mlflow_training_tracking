@@ -273,7 +273,7 @@ class MachineLearningModelTrainer:
                 metric_value = getattr(self.model_interface, metric)()
                 await self.async_log('metrics', metric_value, prepend='custom.')
             self.save_model()
-            self.async_log('artifacts', self.run_folder_path)
+            await self.async_log('artifacts', self.run_folder_path)
             self.set_tags(state='success')
             await self.end_run()
 
@@ -285,7 +285,7 @@ class MachineLearningModelTrainer:
             with open(self.error_log_path, 'w') as f:
                 f.write(str(e))
                 f.write(traceback.format_exc())
-            self.async_log('artifact', self.error_log_path)
+            await self.async_log('artifact', self.error_log_path)
             await self.end_run()
 
     def pipeline(self):
