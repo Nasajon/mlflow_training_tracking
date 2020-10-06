@@ -52,7 +52,7 @@ class MachineLearningModelTrainer:
         self.run_id = self.setup_mlflow(mlflow_server,
                                         mlflow_experiment_name,
                                         model_id)
-        self.crate_folder_structure(run_folder_path,
+        self.create_folder_structure(run_folder_path,
                                     model_folder,
                                     log_folder,
                                     error_log_folder)
@@ -98,7 +98,7 @@ class MachineLearningModelTrainer:
         mlflow.end_run()
         self.fprint("Run finished.")
 
-    def crate_folder_structure(self, run_folder_path,
+    def create_folder_structure(self, run_folder_path,
                                model_folder,
                                log_folder,
                                error_log_folder):
