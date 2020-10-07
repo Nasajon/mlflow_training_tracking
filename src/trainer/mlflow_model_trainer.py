@@ -40,6 +40,9 @@ class MachineLearningModelTrainer:
                  error_log_folder='log',
                  extra_model_params={},
                  model_tags={},
+                 mlflow_param_logging_enabled=True,
+                 mlflow_metric_logging_enabled=True,
+                 mlflow_artifact_logging_enabled=True,
                  mlflow_logging_enabled=True):
 
         if not isinstance(model_interface, ModelOperatorInterface):
@@ -53,9 +56,9 @@ class MachineLearningModelTrainer:
                                         mlflow_experiment_name,
                                         model_id)
         self.create_folder_structure(run_folder_path,
-                                    model_folder,
-                                    log_folder,
-                                    error_log_folder)
+                                     model_folder,
+                                     log_folder,
+                                     error_log_folder)
         self.log_name = 'model_trainer.log'
         self.error_log_name = 'model_trainer_error.log'
         self.log_path = os.path.join(self.log_folder_path,
@@ -76,6 +79,9 @@ class MachineLearningModelTrainer:
         self.custom_train_metrics = custom_train_metrics
         self.model_tags = model_tags
         self.extra_model_params = extra_model_params
+        self.mlflow_param_logging_enabled = mlflow_param_logging_enabled
+        self.mlflow_metric_logging_enabled = mlflow_metric_logging_enabled
+        self.mlflow_artifact_logging_enabled = mlflow_artifact_logging_enabled
         self.mlflow_logging_enabled = mlflow_logging_enabled
 
     def setup_mlflow(self, mlflow_server, mlflow_experiment_name, model_id):
@@ -99,9 +105,9 @@ class MachineLearningModelTrainer:
         self.fprint("Run finished.")
 
     def create_folder_structure(self, run_folder_path,
-                               model_folder,
-                               log_folder,
-                               error_log_folder):
+                                model_folder,
+                                log_folder,
+                                error_log_folder):
 
         self.run_folder_path = os.path.join(run_folder_path, self.run_id)
         if os.path.exists(self.run_folder_path):
@@ -149,9 +155,10 @@ class MachineLearningModelTrainer:
         return self
 
     def save_model(self):
-        self.fprint('Saving model...', end=' ')
-        self.model_interface.save(self.model_folder_path)
-        self.fprint('Done.')
+        if self.mlflow_artifact_logging_enabled:
+            self.fprint('Saving model...', end=' ')
+            self.model_interface.save(self.model_folder_path)
+            self.fprint('Done.')
 
     def get_eval_metrics(self):
         y_pred = self.predict(self.eval_x)
@@ -218,18 +225,18 @@ class MachineLearningModelTrainer:
             print(log_obj)
             return
 
-        if _type == 'params':
+        if _type == 'params' and self.mlflow_param_logging_enabled:
             log_obj = prepend_key(log_obj, prepend)
             mlflow.log_params(log_obj)
 
-        if _type == 'metrics':
+        if _type == 'metrics' and self.mlflow_metric_logging_enabled:
             log_obj['metrics'] = prepend_key(log_obj['metrics'], prepend)
             mlflow.log_metrics(**log_obj)
 
-        if _type == 'artifact':
+        if _type == 'artifact' and self.mlflow_artifact_logging_enabled:
             mlflow.log_artifact(log_obj)
 
-        if _type == 'artifacts':
+        if _type == 'artifacts' and self.mlflow_artifact_logging_enabled:
             mlflow.log_artifacts(log_obj)
 
     def set_tags(self, **tags):
