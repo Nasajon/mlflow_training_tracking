@@ -12,18 +12,18 @@ def prepend_key(data_obj: object, prepend: str):
     if isinstance(data_obj, dict):
         prepended_dict = {}
         for key in data_obj.keys():
-            prepended_dict[prepend+str(key)] = data_obj.get(key)
+            prepended_dict[prepend + str(key)] = data_obj.get(key)
         return prepended_dict
 
     if isinstance(data_obj, str):
-        return prepend+data_obj
+        return prepend + data_obj
 
     if isinstance(data_obj, list):
         return [prepend_key(list_obj, prepend) for list_obj in data_obj]
 
 
 class MachineLearningModelTrainer:
-    max_aio_tasks = 20
+    MAX_AIO_TASKS = 20
 
     def __init__(self,
                  mlflow_server,
@@ -205,7 +205,7 @@ class MachineLearningModelTrainer:
                 await self.async_log('params', layers, prepend)
                 del log_obj['layers']
 
-        if len(self.aio_tasks) >= self.max_aio_tasks:
+        if len(self.aio_tasks) >= self.MAX_AIO_TASKS:
             self.fprint(f"Tasks set full, waiting any task to complete")
             _done, self.aio_tasks = await aio.wait(
                 self.aio_tasks, return_when=aio.FIRST_COMPLETED)
@@ -249,9 +249,9 @@ class MachineLearningModelTrainer:
 
     async def _pipeline(self):
         try:
-            print('*'*20)
+            print('*' * 20)
             print('*     Starting     *')
-            print('*'*20)
+            print('*' * 20)
             self.fprint(f'Model Run: {self.run_id}')
             self.set_tags(model_id=self.model_id,
                           version=self.model_version,
