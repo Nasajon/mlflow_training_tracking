@@ -137,9 +137,8 @@ BigQueryDNNRegressionModelOperatorBigQueryLocation
         - None
 
 Known issues:
-
-BigQuery Location is not SQL-injection-free, and I don't care
+- BigQuery Location is not SQL-injection-free, and I don't care
 
 Future work:
+- Add test dataset
 
-Add test dataset
