@@ -4,6 +4,8 @@ from service_interfaces.data_interface import DataOperatorInterface
 
 
 class FileToDataFrame(DataOperatorInterface):
+    def __init__(self):
+        self.data_loaded = False
 
     def load_data(self, train_file: str, eval_file: str, target_column: str) -> DataOperatorInterface:
         """CSV implementation. Open file and return as pandas Dataframe
@@ -16,6 +18,10 @@ class FileToDataFrame(DataOperatorInterface):
         Returns:
             self
         """
+        # get data that was previous loaded
+        if self.data_loaded:
+            return
+
         # train file
         df = pd.read_csv(train_file)
         self.train_y = df.pop(target_column)
