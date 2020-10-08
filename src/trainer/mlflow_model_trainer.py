@@ -6,6 +6,7 @@ from datetime import datetime
 from service_interfaces.data_interface import DataOperatorInterface
 from service_interfaces.model_interface import ModelOperatorInterface
 from service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
+from helpers.exception_builder import ExceptionBuilder
 
 
 def prepend_key(data_obj: object, prepend: str):
@@ -45,12 +46,18 @@ class MachineLearningModelTrainer:
                  mlflow_artifact_logging_enabled=True,
                  mlflow_logging_enabled=True):
 
+        exception_builder = ExceptionBuilder(
+            exception=TypeError, separator='; ')
         if not isinstance(model_interface, ModelOperatorInterface):
-            raise TypeError
+            exception_builder.add_message(
+                "model_interface must be a instance of ModelOperatorInterface.")
         if not isinstance(data_interface, DataOperatorInterface):
-            raise TypeError
+            exception_builder.add_message(
+                "data_interface must be a instance of DataOperatorInterface.")
         if not isinstance(metrics_interface, EvaluationMetricsOperatorInterface):
-            raise TypeError
+            exception_builder.add_message(
+                "metrics_interface must be a instance of EvaluationMetricsOperatorInterface.")
+        exception_builder.raise_exception_if_exist()
 
         self.run_id = self.setup_mlflow(mlflow_server,
                                         mlflow_experiment_name,
@@ -95,7 +102,7 @@ class MachineLearningModelTrainer:
     async def end_run(self):
         if len(self.aio_tasks) > 0:
             self.fprint("Waiting async tasks")
-            _done, self.aio_tasks = await aio.wait(self.aio_tasks)
+            _done, self.aio_tasks = await aio.wait(self.aio_tasks, return_when=aio.ALL_COMPLETED)
             self.raise_task(_done)
 
         self._end_run()
