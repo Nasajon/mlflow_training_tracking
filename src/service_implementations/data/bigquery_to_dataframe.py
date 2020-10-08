@@ -4,10 +4,10 @@ from service_interfaces.data_interface import DataOperatorInterface
 
 
 class BigQueryToDataFrame(DataOperatorInterface):
-    data_loaded = False
 
     def __init__(self):
         self.client = bigquery.Client()
+        self.data_loaded = False
 
     def load_data(self, train_sql: str, eval_sql: str, target_column: str) -> DataOperatorInterface:
         """BigQuery Data implementation. Query API and return result as pandas Dataframe
