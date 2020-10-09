@@ -4,10 +4,11 @@ from service_interfaces.data_interface import DataOperatorInterface
 
 
 class FileToDataFrame(DataOperatorInterface):
-    def __init__(self):
+    def __init__(self, train_uri: str, eval_uri: str, target_column: str):
         self.data_loaded = False
+        super().__init__(train_uri, eval_uri, target_column)
 
-    def load_data(self, train_file: str, eval_file: str, target_column: str) -> DataOperatorInterface:
+    def load_data(self) -> DataOperatorInterface:
         """CSV implementation. Open file and return as pandas Dataframe
 
         Args:
@@ -23,13 +24,14 @@ class FileToDataFrame(DataOperatorInterface):
             return
 
         # train file
-        df = pd.read_csv(train_file)
-        self.train_y = df.pop(target_column)
+        df = pd.read_csv(self.train_uri)
+        self.train_y = df.pop(self.target_column)
         self.train_X = df
         # eval file
-        df = pd.read_csv(eval_file)
-        self.eval_y = df.pop(target_column)
+        df = pd.read_csv(self.eval_uri)
+        self.eval_y = df.pop(self.target_column)
         self.eval_X = df
+        self.data_loaded = True
         return self
 
     def get_train_x(self) -> DataFrame:

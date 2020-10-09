@@ -5,30 +5,31 @@ from service_interfaces.data_interface import DataOperatorInterface
 
 class BigQueryToDataFrame(DataOperatorInterface):
 
-    def __init__(self):
-        self.client = bigquery.Client()
-        self.data_loaded = False
-
-    def load_data(self, train_sql: str, eval_sql: str, target_column: str) -> DataOperatorInterface:
+    def __init__(self, train_uri: str, eval_uri: str, target_column: str):
         """BigQuery Data implementation. Query API and return result as pandas Dataframe
 
         Args:
-            train_sql (str): SQL query
-            eval_sql (str): SQL query
+            train_uri (str): SQL query
+            eval_uri (str): SQL query
             target_column (str): Target column
 
         Returns:
             self
         """
+        super().__init__(train_uri, eval_uri, target_column)
+        self.client = bigquery.Client()
+        self.data_loaded = False
+
+    def load_data(self) -> DataOperatorInterface:
         # get data that was previous loaded
         if self.data_loaded:
             return
 
-        df = self.client.query(train_sql).to_dataframe()  # API request
-        self.train_y = df.pop(target_column)
+        df = self.client.query(self.train_uri).to_dataframe()  # API request
+        self.train_y = df.pop(self.target_column)
         self.train_X = df
-        df = self.client.query(eval_sql).to_dataframe()  # API request
-        self.eval_y = df.pop(target_column)
+        df = self.client.query(self.eval_uri).to_dataframe()  # API request
+        self.eval_y = df.pop(self.target_column)
         self.eval_X = df
         self.data_loaded = True
         return self
