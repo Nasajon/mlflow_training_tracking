@@ -40,5 +40,4 @@ class EvaluationRegressionsMetricsOperatorInterface(EvaluationMetricsOperatorInt
         metrics["median_absolute_error"] = self.median_absolute_error()
         metrics["r2_score"] = self.r2_score()
         metrics["max_error"] = self.max_error()
-        metrics["mean_abs_perc_error"] = self.mean_abs_perc_error()
         return {"metrics": metrics}
