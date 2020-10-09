@@ -24,23 +24,20 @@ def prepend_key(data_obj: object, prepend: str):
 
 
 class MachineLearningModelTrainer:
-    MAX_AIO_TASKS = 20
+    MAX_AIO_TASKS = 15
 
     def __init__(self,
                  mlflow_server,
                  mlflow_experiment_name,
-                 model_id,
-                 model_version,
                  model_interface, data_interface, metrics_interface,
-                 train_data, eval_data, target_column, model_parameters, training_parameters,
                  custom_eval_metrics=[],
                  custom_train_metrics=[],
                  run_folder_path='/tmp/model_run',
                  model_folder='model_artifact',
                  log_folder='log',
                  error_log_folder='log',
-                 extra_model_params={},
-                 model_tags={},
+                 experiment_parameters={},
+                 experiment_tags={},
                  mlflow_param_logging_enabled=True,
                  mlflow_metric_logging_enabled=True,
                  mlflow_artifact_logging_enabled=True,
@@ -59,9 +56,12 @@ class MachineLearningModelTrainer:
                 "metrics_interface must be a instance of EvaluationMetricsOperatorInterface.")
         exception_builder.raise_exception_if_exist()
 
+        self.model_interface = model_interface
+        self.data_interface = data_interface
+        self.metrics_interface = metrics_interface
+
         self.run_id = self.setup_mlflow(mlflow_server,
-                                        mlflow_experiment_name,
-                                        model_id)
+                                        mlflow_experiment_name)
         self.create_folder_structure(run_folder_path,
                                      model_folder,
                                      log_folder,
@@ -72,29 +72,28 @@ class MachineLearningModelTrainer:
                                      self.log_name)
         self.error_log_path = os.path.join(self.log_folder_path,
                                            self.error_log_name)
-        self.model_id = model_id
-        self.model_version = model_version
-        self.model_interface = model_interface
-        self.data_interface = data_interface
-        self.metrics_interface = metrics_interface
-        self.train_data = train_data
-        self.eval_data = eval_data
-        self.model_parameters = model_parameters
-        self.training_parameters = training_parameters
-        self.target_column = target_column
+
         self.custom_eval_metrics = custom_eval_metrics
         self.custom_train_metrics = custom_train_metrics
-        self.model_tags = model_tags
-        self.extra_model_params = extra_model_params
+        self.experiment_tags = experiment_tags
+        self.experiment_parameters = experiment_parameters
         self.mlflow_param_logging_enabled = mlflow_param_logging_enabled
         self.mlflow_metric_logging_enabled = mlflow_metric_logging_enabled
         self.mlflow_artifact_logging_enabled = mlflow_artifact_logging_enabled
         self.mlflow_logging_enabled = mlflow_logging_enabled
 
-    def setup_mlflow(self, mlflow_server, mlflow_experiment_name, model_id):
+    @property
+    def model_id(self):
+        return self.model_interface.id
+
+    @property
+    def model_version(self):
+        return self.model_interface.version
+
+    def setup_mlflow(self, mlflow_server, mlflow_experiment_name):
         mlflow.set_tracking_uri(mlflow_server)
         mlflow.set_experiment(mlflow_experiment_name)
-        run = mlflow.start_run(run_name=model_id)
+        run = mlflow.start_run(run_name=self.model_id)
         run_id = run.info.run_id
 
         return run_id
@@ -134,8 +133,7 @@ class MachineLearningModelTrainer:
 
     def load_data(self):
         self.fprint('Loading Data...', end=' ')
-        self.data_interface.load_data(
-            self.train_data, self.eval_data, target_column=self.target_column)
+        self.data_interface.load_data()
         self.train_x = self.data_interface.get_train_x()
         self.train_y = self.data_interface.get_train_y()
         self.eval_x = self.data_interface.get_eval_x()
@@ -156,8 +154,7 @@ class MachineLearningModelTrainer:
             train_x=self.train_x,
             train_y=self.train_y,
             eval_x=self.eval_x,
-            eval_y=self.eval_y,
-            **self.training_parameters)
+            eval_y=self.eval_y)
         self.fprint('Model trained.')
         return self
 
@@ -200,17 +197,6 @@ class MachineLearningModelTrainer:
             return
         if isinstance(log_obj, dict):
             log_obj = log_obj.copy()
-
-        if _type == 'params':
-            # special case for nn layers because of 250 char limit on param log
-            if log_obj.get('layers', False):
-                index = 0
-                layers = {}
-                for layer in log_obj['layers']:
-                    layers[f'layer_{index}'] = layer
-                    index += 1
-                await self.async_log('params', layers, prepend)
-                del log_obj['layers']
 
         if len(self.aio_tasks) >= self.MAX_AIO_TASKS:
             self.fprint(f"Tasks set full, waiting any task to complete")
@@ -264,16 +250,13 @@ class MachineLearningModelTrainer:
                           version=self.model_version,
                           state='running',
                           model_type=self.model_interface.model_type,
-                          **self.model_tags)
-            await self.async_log('params', self.extra_model_params, prepend='extra.')
-            await self.async_log('params', {'train_data': str(self.train_data),
-                                            'eval_data': str(self.eval_data),
-                                            'target_column': str(self.target_column)})
-            await self.async_log('params', self.model_parameters, prepend='model.')
-            await self.async_log('params', self.training_parameters,
+                          **self.experiment_tags)
+            await self.async_log('params', self.experiment_parameters, prepend='exp.')
+            await self.async_log('params', self.data_interface.get_parameters(), prepend='data.')
+            await self.async_log('params', self.model_interface.get_model_parameters(), prepend='model.')
+            await self.async_log('params', self.model_interface.get_training_parameters(),
                                  prepend='training.')
 
-            self.instantiate_model()
             self.load_data()
             self.train()
 
@@ -292,8 +275,9 @@ class MachineLearningModelTrainer:
             await self.end_run()
 
         except Exception as e:
-            self.set_tags(state='failed')
+            print('\n\n\n')
             self.fprint('Run Failed')
+            self.set_tags(state='failed')
             import traceback
             print(traceback.format_exc())
             with open(self.error_log_path, 'w') as f:
