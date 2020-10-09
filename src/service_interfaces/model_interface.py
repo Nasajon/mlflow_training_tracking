@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from copy import deepcopy
 from pandas import DataFrame
 
 
@@ -8,9 +9,32 @@ class ModelOperatorInterface(metaclass=ABCMeta):
     def model_type(self):
         raise NotImplemented
 
-    @abstractmethod
-    def instantiate_model(self, model_id, model_version, *args, **kwargs) -> None:
-        raise NotImplemented
+    def __init__(self, _id, version, model_parameters, training_parameters, *args, **kwargs):
+        self.id = _id
+        self.version = version
+        self.model_parameters = deepcopy(model_parameters)
+        self.training_parameters = deepcopy(training_parameters)
+        self.args = args
+        self.kwargs = kwargs
+
+    def get_parameters(self):
+        parameters = {
+            'id': self.id,
+            'version': self.version,
+            'target_column': self.target_column,
+            'model_parameters': self.model_parameters,
+            'training_parameters': self.training_parameters,
+            **self.kwargs
+        }
+        if self.args:
+            parameters['args'] = self.args
+        return deepcopy(parameters)
+
+    def get_model_parameters(self):
+        return deepcopy(self.model_parameters)
+
+    def get_training_parameters(self):
+        return deepcopy(self.training_parameters)
 
     @abstractmethod
     def fit(train_x, train_y, eval_x, eval_y, *args, **kwargs) -> None:

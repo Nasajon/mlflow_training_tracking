@@ -17,38 +17,40 @@ AS (
     SELECT *, true as is_eval FROM eval_data
 )
 """
+
     predict_query = """
 SELECT {id_column}, predicted_{target_column} FROM ML.PREDICT(MODEL `{sql_model_path}`, ({predict_query}))
 """
+
     train_metric_query = """
 SELECT * FROM ML.TRAINING_INFO(MODEL `{sql_model_path}`) ORDER BY iteration
-    """
+"""
+
     train_feature_importance_query = """
 SELECT * FROM ML.FEATURE_IMPORTANCE (MODEL `{sql_model_path}`)
-    """
+"""
+
     job_id_prefix = 'mlflow_model_'
 
-    def __init__(self, project, dataset):
+    def __init__(self, project, dataset, _id, version, model_parameters, training_parameters):
+        super().__init__(_id=_id, version=version,
+                         model_parameters=model_parameters, training_parameters=training_parameters, project=project, dataset=dataset)
         self.project = project
         self.dataset = dataset
         self.client = bigquery.Client()
-
-    def instantiate_model(self, model_id, model_version, **kwargs) -> None:
-        self.model_id = model_id
-        self.model_version = model_version
-        self.model_id_version = f'{self.model_id}_{self.model_version}'
+        self.model_id_version = f'{self.id}_{self.version}'
         self.sql_model_path = f'{self.project}.{self.dataset}.{self.model_id_version}'
-        self.kwargs = kwargs
-        if not 'data_split_method'.lower() in [key.lower() for key in kwargs.keys()]:
-            self.kwargs['data_split_method'] = 'CUSTOM'
-            self.kwargs['data_split_col'] = 'is_eval'
 
-    def fit(self, train_x, train_y, eval_x, eval_y, *args, **kwargs) -> None:
-        self.kwargs['input_label_cols'] = train_y.columns
+    def fit(self, train_x, train_y, eval_x, eval_y) -> None:
+        self.input_label_col = train_y.columns[0]
+        model_parameters = self.get_model_parameters()
+        model_parameters['data_split_method'] = 'CUSTOM'
+        model_parameters['data_split_col'] = 'is_eval'
+        model_parameters['input_label_cols'] = [self.input_label_cols]
         quote = "'"
         options = ',\n'.join(
             [f'{key}={quote if isinstance(value, str) else ""}{value}{quote if isinstance(value, str) else ""}'
-             for key, value in self.kwargs.items()])
+             for key, value in model_parameters.items()])
         train_data_location = BigQueryLocation([*train_x.columns, *train_y.columns],
                                                train_x.id_column,
                                                train_x.table,
@@ -64,11 +66,12 @@ SELECT * FROM ML.FEATURE_IMPORTANCE (MODEL `{sql_model_path}`)
             eval_data=eval_data_location.get_select_query(),
             sql_model_path=self.sql_model_path,
             options=options)
+        return
         query_job = self.run_query_and_wait(
             create_model_query, job_id_prefix=self.job_id_prefix)
 
     def predict(self, data: str, *args, **kwargs) -> None:
-        target_column = self.kwargs['input_label_cols'][0]
+        target_column = self.input_label_col
         predict_query = self.predict_query.format(id_column=data.id_column,
                                                   target_column=target_column,
                                                   sql_model_path=self.sql_model_path,

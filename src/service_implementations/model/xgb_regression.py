@@ -7,14 +7,15 @@ class XGBRegressionModelOperatorDataFrame(xgb.XGBRegressor, ModelOperatorInterfa
     model_type = "XGB Tree Regression"
     __repr__ = object.__repr__
 
-    def __init__(self):
-        pass
-
-    def instantiate_model(self, model_id, model_version, *args, **kwargs):
-        self.model_id = model_id
-        self.model_version = model_version
-        self.model_id_version = f'{self.model_id}_{self.model_version}'
-        super().__init__(**kwargs)
+    def __init__(self, _id, version, model_parameters, training_parameters):
+        self.id = _id
+        self.version = version
+        self.model_id_version = f'{self.id}_{self.version}'
+        self.model_parameters = model_parameters
+        self.training_parameters = training_parameters
+        xgb.XGBRegressor.__init__(self, **model_parameters)
+        ModelOperatorInterface.__init__(self, _id=_id, version=version,
+                                        model_parameters=model_parameters, training_parameters=training_parameters)
 
     def load(self, folder_path):
         path = os.path.join(folder_path, self.model_id_version)
@@ -24,15 +25,16 @@ class XGBRegressionModelOperatorDataFrame(xgb.XGBRegressor, ModelOperatorInterfa
         path = os.path.join(folder_path, self.model_id_version)
         super().save_model(path)
 
-    def fit(self, train_x, train_y, eval_x, eval_y, **kwargs):
+    def fit(self, train_x, train_y, eval_x, eval_y):
+        training_parameters = self.get_training_parameters()
         eval_set_list = [(train_x, train_y, 'train'),
                          (eval_x, eval_y, 'eval')]
         self.eval_set_names = {f'validation_{index}': f"validation_{eval_set[2]}"
                                for index, eval_set in enumerate(eval_set_list)}
         # print(self.eval_set_names)
-        kwargs['eval_set'] = [(eval_set[0], eval_set[1])
-                              for eval_set in eval_set_list]
-        super().fit(X=train_x, y=train_y, **kwargs)
+        training_parameters['eval_set'] = [(eval_set[0], eval_set[1])
+                                           for eval_set in eval_set_list]
+        super().fit(X=train_x, y=train_y, **training_parameters)
 
     def get_train_metrics(self) -> 'list[dict]':
         """Return a list of dictionaries to log in metrics MLFlow server
@@ -66,7 +68,7 @@ class XGBRegressionModelOperatorDataFrame(xgb.XGBRegressor, ModelOperatorInterfa
         for validation, metrics_collection in self.evals_result().items():
             for metric, values_list in metrics_collection.items():
                 aux_dict[self.eval_set_names[validation] +
-                         "."+metric] = values_list
+                         "." + metric] = values_list
                 values_list_len = len(values_list)
 
         for index in range(values_list_len):
