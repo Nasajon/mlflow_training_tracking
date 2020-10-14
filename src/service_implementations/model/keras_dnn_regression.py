@@ -1,7 +1,9 @@
 import os
 from copy import deepcopy
+import pandas as pd
 from tensorflow import keras
 from service_interfaces.model_interface import ModelOperatorInterface
+from helpers.util import df_temporary_remove_column, df_permanently_remove_column
 
 
 class KerasRegressionModelOperatorDataFrame(keras.Sequential, ModelOperatorInterface):
@@ -38,11 +40,21 @@ class KerasRegressionModelOperatorDataFrame(keras.Sequential, ModelOperatorInter
             index += 1
         return deepcopy(model_parameters)
 
+    @df_permanently_remove_column(df_variable='train_x', column_property_name='row_id_column')
+    @df_permanently_remove_column(df_variable='train_y', column_property_name='row_id_column')
+    @df_permanently_remove_column(df_variable='eval_x', column_property_name='row_id_column')
+    @df_permanently_remove_column(df_variable='eval_y', column_property_name='row_id_column')
     def fit(self, train_x, train_y, eval_x, eval_y) -> None:
         training_parameters = super().get_training_parameters()
-        print(training_parameters)
         training_parameters['validation_data'] = (eval_x, eval_y)
         super().fit(x=train_x, y=train_y, **training_parameters)
+
+    @df_temporary_remove_column(df_variable='x_uri', column_property_name='row_id_column')
+    def predict(self, x_uri):
+        y_pred = super().predict(x_uri)
+        y_pred = pd.DataFrame(
+            y_pred, columns=[f'predicted_{self.target_column}'])
+        return y_pred
 
     def save(self, folder_path) -> None:
         path = os.path.join(folder_path, self.model_id_version)

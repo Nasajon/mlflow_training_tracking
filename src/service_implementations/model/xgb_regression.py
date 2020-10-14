@@ -1,6 +1,7 @@
 import xgboost as xgb
 import os
 from service_interfaces.model_interface import ModelOperatorInterface
+from helpers.util import df_temporary_remove_column, df_permanently_remove_column
 
 
 class XGBRegressionModelOperatorDataFrame(xgb.XGBRegressor, ModelOperatorInterface):
@@ -25,6 +26,10 @@ class XGBRegressionModelOperatorDataFrame(xgb.XGBRegressor, ModelOperatorInterfa
         path = os.path.join(folder_path, self.model_id_version)
         super().save_model(path)
 
+    @df_permanently_remove_column(df_variable='train_x', column_property_name='row_id_column')
+    @df_permanently_remove_column(df_variable='train_y', column_property_name='row_id_column')
+    @df_permanently_remove_column(df_variable='eval_x', column_property_name='row_id_column')
+    @df_permanently_remove_column(df_variable='eval_y', column_property_name='row_id_column')
     def fit(self, train_x, train_y, eval_x, eval_y):
         training_parameters = self.get_training_parameters()
         eval_set_list = [(train_x, train_y, 'train'),
@@ -35,6 +40,13 @@ class XGBRegressionModelOperatorDataFrame(xgb.XGBRegressor, ModelOperatorInterfa
         training_parameters['eval_set'] = [(eval_set[0], eval_set[1])
                                            for eval_set in eval_set_list]
         super().fit(X=train_x, y=train_y, **training_parameters)
+
+    @df_temporary_remove_column(df_variable='x_uri', column_property_name='row_id_column')
+    def predict(self, x_uri):
+        y_pred = super().predict(X)
+        y_pred = pd.DataFrame(
+            y_pred, columns=[f'predicted_{self.target_column}'])
+        return y_pred
 
     def get_train_metrics(self) -> 'list[dict]':
         """Return a list of dictionaries to log in metrics MLFlow server
