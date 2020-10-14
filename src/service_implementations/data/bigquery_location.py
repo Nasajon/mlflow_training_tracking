@@ -5,8 +5,8 @@ from helpers.bigquery_location import BigQueryLocation
 
 class DataOperatorBigQueryLocation(DataOperatorInterface):
 
-    def __init__(self, train_uri: str, eval_uri: str, target_column: str):
-        super().__init__(train_uri, eval_uri, target_column)
+    def __init__(self, train_uri: str, eval_uri: str, target_column: str, row_id_column: str):
+        super().__init__(train_uri, eval_uri, target_column, row_id_column)
 
     def load_data(self) -> DataOperatorInterface:
         train_data = deepcopy(self.train_uri)
@@ -35,3 +35,12 @@ class DataOperatorBigQueryLocation(DataOperatorInterface):
 
     def get_eval_y(self) -> str:
         return BigQueryLocation(**self.eval_y)
+
+    def save_predicted_train_data(self, data_uri):
+        pass
+
+    def save_predicted_eval_data(self, data_uri):
+        pass
+
+    def end_run(self):
+        pass
