@@ -1,5 +1,6 @@
-import xgboost as xgb
 import os
+import xgboost as xgb
+import pandas as pd
 from service_interfaces.model_interface import ModelOperatorInterface
 from helpers.util import df_temporary_remove_column, df_permanently_remove_column
 
@@ -43,7 +44,7 @@ class XGBRegressionModelOperatorDataFrame(xgb.XGBRegressor, ModelOperatorInterfa
 
     @df_temporary_remove_column(df_variable='x_uri', column_property_name='row_id_column')
     def predict(self, x_uri):
-        y_pred = super().predict(X)
+        y_pred = super().predict(x_uri)
         y_pred = pd.DataFrame(
             y_pred, columns=[f'predicted_{self.target_column}'])
         return y_pred
