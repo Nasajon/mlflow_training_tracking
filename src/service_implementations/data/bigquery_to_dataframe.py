@@ -1,11 +1,14 @@
+from datetime import datetime
 from google.cloud import bigquery
 from pandas import DataFrame
-from service_interfaces.data_interface import DataOperatorInterface
+from service_implementations.data.dataframe_base import ToDataFrameBase
 
 
-class BigQueryToDataFrame(DataOperatorInterface):
+class BigQueryToDataFrame(ToDataFrameBase):
 
-    def __init__(self, train_uri: str, eval_uri: str, target_column: str):
+    def __init__(self, train_uri: str, eval_uri: str, target_column: str,
+                 row_id_column: str, predictions_dataset: str,
+                 save_data_job_config=None):
         """BigQuery Data implementation. Query API and return result as pandas Dataframe
 
         Args:
@@ -16,52 +19,67 @@ class BigQueryToDataFrame(DataOperatorInterface):
         Returns:
             self
         """
-        super().__init__(train_uri, eval_uri, target_column)
+        super().__init__(
+            train_uri, eval_uri, target_column, row_id_column,
+            predictions_dataset=predictions_dataset,
+            save_data_job_config='custom' if save_data_job_config is not None else None
+        )
+        self.predictions_dataset = predictions_dataset
+        self.save_data_job_config = save_data_job_config
         self.client = bigquery.Client()
         self.data_loaded = False
+        self.job_pool = list()
 
-    def load_data(self) -> DataOperatorInterface:
+    def load_data(self):
         # get data that was previous loaded
         if self.data_loaded:
             return
 
-        df = self.client.query(self.train_uri).to_dataframe()  # API request
-        self.train_y = df.pop(self.target_column)
-        self.train_X = df
-        df = self.client.query(self.eval_uri).to_dataframe()  # API request
-        self.eval_y = df.pop(self.target_column)
-        self.eval_X = df
+        train_df = self.client.query(
+            self.train_uri).to_dataframe()  # API request
+        eval_df = self.client.query(
+            self.eval_uri).to_dataframe()  # API request
+        super().load_data(train_df=train_df, eval_df=eval_df)
         self.data_loaded = True
-        return self
 
-    def get_train_x(self) -> DataFrame:
-        """Return X values as DataFrame
+    def _save_predicted_data(self, data_uri: DataFrame, partition: str):
+        df = data_uri.copy()
+        df['mlflow_experiment_name'] = self.mlflow_experiment_name
+        df['model_id'] = self.model_id
+        df['model_version'] = self.model_version
+        df['run_id'] = self.run_id
+        df['partition'] = partition
+        insertDate = datetime.utcnow()
+        df['load_date'] = insertDate
+        destination = f'{self.predictions_dataset}.{self.mlflow_experiment_name}'
+        if (job_config := self.save_data_job_config) is None:
+            job_config = bigquery.job.LoadJobConfig()
+            job_config.write_disposition = bigquery.WriteDisposition.WRITE_APPEND
+            job_config.create_disposition = bigquery.CreateDisposition.CREATE_IF_NEEDED
+            job_config.time_partitioning = bigquery.TimePartitioning(
+                type_=bigquery.TimePartitioningType.DAY,
+                # If not set [field], the table is partitioned by pseudo column ``_PARTITIONTIME``.
+                field=None
+            )
 
-        Returns:
-            DataFrame: X values from table
-        """
-        return self.train_X
+        job = self.client.load_table_from_dataframe(
+            df, destination, job_config=self.save_data_job_config
+        )
+        self.job_pool.append(job)
 
-    def get_train_y(self) -> DataFrame:
-        """Return y values as DataFrame
+    def save_predicted_train_data(self, data_uri: DataFrame):
+        self._save_predicted_data(
+            data_uri,
+            partition='train'
+        )
 
-        Returns:
-            DataFrame: y values from table
-        """
-        return self.train_y
+    def save_predicted_eval_data(self, data_uri: DataFrame):
+        self._save_predicted_data(
+            data_uri,
+            partition='eval'
+        )
 
-    def get_eval_x(self) -> DataFrame:
-        """Return X values as DataFrame
-
-        Returns:
-            DataFrame: X values from table
-        """
-        return self.eval_X
-
-    def get_eval_y(self) -> DataFrame:
-        """Return y values as DataFrame
-
-        Returns:
-            DataFrame: y values from table
-        """
-        return self.eval_y
+    def end_run(self):
+        # wait jobs to finish
+        for job in self.job_pool:
+            job.result()
