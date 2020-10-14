@@ -5,10 +5,6 @@ from service_interfaces.evaluation_metrics_interface import EvaluationMetricsOpe
 class EvaluationRegressionsMetricsOperatorInterface(EvaluationMetricsOperatorInterface, metaclass=ABCMeta):
 
     @abstractmethod
-    def load_data(X, y, *args, **kwargs):
-        raise NotImplemented
-
-    @abstractmethod
     def explained_variance_score(self):
         raise NotImplemented
 

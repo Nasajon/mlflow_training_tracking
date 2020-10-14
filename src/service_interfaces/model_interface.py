@@ -36,6 +36,10 @@ class ModelOperatorInterface(metaclass=ABCMeta):
     def get_training_parameters(self):
         return deepcopy(self.training_parameters)
 
+    def setup(self, row_id_column, target_column, **kwargs):
+        self.row_id_column = row_id_column
+        self.target_column = target_column
+
     @abstractmethod
     def fit(train_x, train_y, eval_x, eval_y, *args, **kwargs) -> None:
         raise NotImplemented
