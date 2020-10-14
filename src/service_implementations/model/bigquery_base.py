@@ -20,6 +20,7 @@ AS (
 
     predict_query = """
 SELECT {id_column}, predicted_{target_column} FROM ML.PREDICT(MODEL `{sql_model_path}`, ({predict_query}))
+ORDER BY {order}
 """
 
     train_metric_query = """
@@ -40,49 +41,60 @@ SELECT * FROM ML.FEATURE_IMPORTANCE (MODEL `{sql_model_path}`)
         self.client = bigquery.Client()
         self.model_id_version = f'{self.id}_{self.version}'
         self.sql_model_path = f'{self.project}.{self.dataset}.{self.model_id_version}'
+        self.training_enabled = True
+
+    def disable_training(self):
+        self.training_enabled = False
+        return self
 
     def fit(self, train_x, train_y, eval_x, eval_y) -> None:
-        self.input_label_col = train_y.columns[0]
+        self.input_label_col = train_y.target_column
         model_parameters = self.get_model_parameters()
         model_parameters['data_split_method'] = 'CUSTOM'
         model_parameters['data_split_col'] = 'is_eval'
-        model_parameters['input_label_cols'] = [self.input_label_cols]
+        model_parameters['input_label_cols'] = [self.input_label_col]
         quote = "'"
         options = ',\n'.join(
             [f'{key}={quote if isinstance(value, str) else ""}{value}{quote if isinstance(value, str) else ""}'
              for key, value in model_parameters.items()])
-        train_data_location = BigQueryLocation([*train_x.columns, *train_y.columns],
-                                               train_x.id_column,
-                                               train_x.table,
-                                               train_x.order,
-                                               train_x.limit)
-        eval_data_location = BigQueryLocation([*eval_x.columns, *eval_y.columns],
-                                              eval_x.id_column,
-                                              eval_x.table,
-                                              eval_x.order,
-                                              eval_x.limit)
+        train_data_location = BigQueryLocation(data_columns=train_x.data_columns,
+                                               id_column=train_x.id_column,
+                                               table=train_x.table,
+                                               order=train_x.order,
+                                               target_column=train_y.target_column,
+                                               limit=train_x.limit)
+        eval_data_location = BigQueryLocation(data_columns=eval_x.data_columns,
+                                              id_column=eval_x.id_column,
+                                              table=eval_x.table,
+                                              order=eval_x.order,
+                                              target_column=eval_y.target_column,
+                                              limit=eval_x.limit)
         create_model_query = self.create_model_query.format(
             train_query=train_data_location.get_select_query(),
             eval_data=eval_data_location.get_select_query(),
             sql_model_path=self.sql_model_path,
             options=options)
-        return
+        if not self.training_enabled:
+            print("Training is disabled, skipping training step")
+            return
         query_job = self.run_query_and_wait(
             create_model_query, job_id_prefix=self.job_id_prefix)
 
-    def predict(self, data: str, *args, **kwargs) -> None:
+    def predict(self, x_uri: str, *args, **kwargs) -> None:
         target_column = self.input_label_col
-        predict_query = self.predict_query.format(id_column=data.id_column,
+        predict_query = self.predict_query.format(id_column=x_uri.id_column,
                                                   target_column=target_column,
                                                   sql_model_path=self.sql_model_path,
-                                                  predict_query=data.get_select_query(include_id=True))
+                                                  predict_query=x_uri.get_select_query(
+                                                      include_id=True),
+                                                  order=x_uri.order)
         query_job = self.run_query_and_wait(predict_query,
                                             job_id_prefix=self.job_id_prefix)
         destination = query_job.destination
-        destination_location = BigQueryLocation(columns=[f'predicted_{target_column}'],
-                                                id_column=data.id_column,
+        destination_location = BigQueryLocation(data_columns=[f'predicted_{target_column}'],
+                                                id_column=x_uri.id_column,
                                                 table=f'{destination.project}.{destination.dataset_id}.{destination.table_id}',
-                                                order=data.order)
+                                                order=x_uri.order)
         return destination_location
 
     def save(self, folder_path: str, *args, **kwargs) -> None:

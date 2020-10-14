@@ -11,30 +11,31 @@ class DataOperatorBigQueryLocation(DataOperatorInterface):
     def load_data(self) -> DataOperatorInterface:
         train_data = deepcopy(self.train_uri)
         eval_data = deepcopy(self.eval_uri)
-        train_data['columns'].remove(self.target_column)
+
         self.train_y = train_data.copy()
-        self.train_y.update({'columns': [self.target_column]})
+        self.train_y.update(
+            {'data_columns': []})
         self.train_x = train_data.copy()
-        self.train_x.update({'columns': train_data['columns']})
-        eval_data['columns'].remove(self.target_column)
+
+        # eval_data['columns'].remove(self.target_column)
         self.eval_y = eval_data.copy()
-        self.eval_y.update({'columns': [self.target_column]})
+        self.eval_y.update(
+            {'data_columns': []})
         self.eval_x = eval_data.copy()
-        self.eval_x.update({'columns': eval_data['columns']})
 
         return self
 
     def get_train_x(self) -> str:
-        return BigQueryLocation(**self.train_x)
+        return BigQueryLocation(**self.train_x, id_column=self.row_id_column)
 
     def get_train_y(self) -> str:
-        return BigQueryLocation(**self.train_y)
+        return BigQueryLocation(**self.train_y, target_column=self.target_column, id_column=self.row_id_column)
 
     def get_eval_x(self) -> str:
-        return BigQueryLocation(**self.eval_x)
+        return BigQueryLocation(**self.eval_x, id_column=self.row_id_column)
 
     def get_eval_y(self) -> str:
-        return BigQueryLocation(**self.eval_y)
+        return BigQueryLocation(**self.eval_y, target_column=self.target_column, id_column=self.row_id_column)
 
     def save_predicted_train_data(self, data_uri):
         pass
