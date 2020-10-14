@@ -59,6 +59,7 @@ class MachineLearningModelTrainer:
         self.model_interface = model_interface
         self.data_interface = data_interface
         self.metrics_interface = metrics_interface
+        self.mlflow_experiment_name = mlflow_experiment_name
 
         self.run_id = self.setup_mlflow(mlflow_server,
                                         mlflow_experiment_name)
@@ -90,6 +91,14 @@ class MachineLearningModelTrainer:
     def model_version(self):
         return self.model_interface.version
 
+    @property
+    def target_column(self):
+        return self.data_interface.target_column
+
+    @property
+    def row_id_column(self):
+        return self.data_interface.row_id_column
+
     def setup_mlflow(self, mlflow_server, mlflow_experiment_name):
         mlflow.set_tracking_uri(mlflow_server)
         mlflow.set_experiment(mlflow_experiment_name)
@@ -97,6 +106,20 @@ class MachineLearningModelTrainer:
         run_id = run.info.run_id
 
         return run_id
+
+    def setup_interfaces(self):
+        self.fprint('Interfaces Setup')
+        setup = {
+            'run_id': self.run_id,
+            'model_id': self.model_id,
+            'model_version': self.model_version,
+            'mlflow_experiment_name': self.mlflow_experiment_name,
+            'row_id_column': self.row_id_column,
+            'target_column': self.target_column
+        }
+        self.data_interface.setup(**setup)
+        self.model_interface.setup(**setup)
+        self.metrics_interface.setup(**setup)
 
     async def end_run(self):
         if len(self.aio_tasks) > 0:
@@ -107,6 +130,7 @@ class MachineLearningModelTrainer:
         self._end_run()
 
     def _end_run(self):
+        self.data_interface.end_run()
         mlflow.end_run()
         self.fprint("Run finished.")
 
@@ -164,16 +188,24 @@ class MachineLearningModelTrainer:
             self.model_interface.save(self.model_folder_path)
             self.fprint('Done.')
 
+    def make_predictions(self):
+        self.eval_y_pred = self.predict(self.eval_x)
+        self.train_y_pred = self.predict(self.train_x)
+
+    def save_predictions(self):
+        self.data_interface.save_predicted_eval_data(self.eval_y_pred)
+        self.data_interface.save_predicted_train_data(self.train_y_pred)
+
     def get_eval_metrics(self):
-        y_pred = self.predict(self.eval_x)
-        self.metrics_interface.load_data(y_true=self.eval_y, y_pred=y_pred)
+        self.metrics_interface.load_data(
+            y_true=self.eval_y, y_pred=self.eval_y_pred)
         return self.metrics_interface.get_eval_metrics()
 
     def get_train_metrics(self):
         return self.model_interface.get_train_metrics()
 
     def predict(self, data):
-        predictions = self.model_interface.predict(data)
+        predictions = self.model_interface.predict(x_uri=data)
         return predictions
 
     def fprint(self, text, end='\n'):
@@ -257,8 +289,11 @@ class MachineLearningModelTrainer:
             await self.async_log('params', self.model_interface.get_training_parameters(),
                                  prepend='training.')
 
+            self.setup_interfaces()
             self.load_data()
             self.train()
+            self.make_predictions()
+            self.save_predictions()
 
             await self.async_log('metrics', self.get_train_metrics(),
                                  prepend='training.')
@@ -272,7 +307,6 @@ class MachineLearningModelTrainer:
             self.save_model()
             await self.async_log('artifacts', self.run_folder_path)
             self.set_tags(state='success')
-            await self.end_run()
 
         except Exception as e:
             print('\n\n\n')
@@ -284,6 +318,8 @@ class MachineLearningModelTrainer:
                 f.write(str(e))
                 f.write(traceback.format_exc())
             await self.async_log('artifact', self.error_log_path)
+
+        finally:
             await self.end_run()
 
     def pipeline(self):
