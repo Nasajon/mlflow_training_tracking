@@ -219,8 +219,7 @@ class MachineLearningModelTrainer:
                 raise task.exception()
 
     async def async_log(self, _type, log_obj, prepend=''):
-        self.fprint(
-            f"Addeding log to async tasks.")
+        # self.fprint(f"Addeding log to async tasks.")
 
         if isinstance(log_obj, list):
             log_obj = log_obj.copy()
@@ -231,7 +230,7 @@ class MachineLearningModelTrainer:
             log_obj = log_obj.copy()
 
         if len(self.aio_tasks) >= self.MAX_AIO_TASKS:
-            self.fprint(f"Tasks set full, waiting any task to complete")
+            # self.fprint(f"Tasks set full, waiting any task to complete")
             _done, self.aio_tasks = await aio.wait(
                 self.aio_tasks, return_when=aio.FIRST_COMPLETED)
             self.raise_task(_done)
@@ -270,7 +269,7 @@ class MachineLearningModelTrainer:
             print(tags)
             return
         mlflow.set_tags(tags)
-        self.fprint('Done.')
+        # self.fprint('Done.')
 
     async def _pipeline(self):
         try:
