@@ -2,9 +2,13 @@ from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_
 from sklearn.metrics._regression import _check_reg_targets
 from service_interfaces.evaluation_regression_metrics_interface import EvaluationRegressionsMetricsOperatorInterface
 import numpy as np
+from helpers.util import df_permanently_remove_column
 
 
 class EvaluationRegressionMetricsNumpyArray(EvaluationRegressionsMetricsOperatorInterface):
+
+    @df_permanently_remove_column(df_variable='y_true', column_property_name='row_id_column')
+    @df_permanently_remove_column(df_variable='y_pred', column_property_name='row_id_column')
     def load_data(self, y_true, y_pred, *args, **kwargs):
         y_type, y_true, y_pred, multioutput = _check_reg_targets(
             y_true, y_pred, multioutput='uniform_average')
