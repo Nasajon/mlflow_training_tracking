@@ -29,9 +29,6 @@ class DataOperatorInterface(metaclass=ABCMeta):
             parameters['args'] = self.args
         return parameters
 
-    def setup(self, **kwargs):
-        pass
-
     @abstractmethod
     def load_data(self, *args, **kwargs) -> 'DataOperatorInterface':
         """Get data from the database and return as pandas DataFrame
