@@ -36,3 +36,9 @@ class BigQueryLocation:
             'limit': self.limit
         }
         return str(repr)
+
+    def copy(self):
+        return BigQueryLocation(
+            data_columns=self.data_columns.copy(), id_column=self.id_column, table=self.table,
+            order=self.order, target_column=self.target_column, limit=self.limit
+        )
