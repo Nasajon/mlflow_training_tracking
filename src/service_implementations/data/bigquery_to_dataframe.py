@@ -2,6 +2,7 @@ from datetime import datetime
 from google.cloud import bigquery
 from pandas import DataFrame
 from service_implementations.data.dataframe_base import ToDataFrameBase
+from helpers.default_settings import set_defaults_save_job_config
 
 
 class BigQueryToDataFrame(ToDataFrameBase):
@@ -44,26 +45,20 @@ class BigQueryToDataFrame(ToDataFrameBase):
 
     def _save_predicted_data(self, data_uri: DataFrame, partition: str):
         df = data_uri.copy()
-        df['mlflow_experiment_name'] = self.mlflow_experiment_name
-        df['model_id'] = self.model_id
-        df['model_version'] = self.model_version
-        df['run_id'] = self.run_id
-        df['partition'] = partition
+        df['mlflow_experiment_name'] = str(self.mlflow_experiment_name)
+        df['model_id'] = str(self.model_id)
+        df['model_version'] = str(self.model_version)
+        df['run_id'] = str(self.run_id)
+        df['data_partition'] = str(partition)
         insertDate = datetime.utcnow()
         df['load_date'] = insertDate
         destination = f'{self.predictions_dataset}.{self.mlflow_experiment_name}'
         if (job_config := self.save_data_job_config) is None:
-            job_config = bigquery.job.LoadJobConfig()
-            job_config.write_disposition = bigquery.WriteDisposition.WRITE_APPEND
-            job_config.create_disposition = bigquery.CreateDisposition.CREATE_IF_NEEDED
-            job_config.time_partitioning = bigquery.TimePartitioning(
-                type_=bigquery.TimePartitioningType.DAY,
-                # If not set [field], the table is partitioned by pseudo column ``_PARTITIONTIME``.
-                field=None
-            )
+            job_config = set_defaults_save_job_config(
+                bigquery.job.LoadJobConfig())
 
         job = self.client.load_table_from_dataframe(
-            df, destination, job_config=self.save_data_job_config
+            df, destination, job_config=job_config
         )
         self.job_pool.append(job)
 
@@ -82,4 +77,6 @@ class BigQueryToDataFrame(ToDataFrameBase):
     def end_run(self):
         # wait jobs to finish
         for job in self.job_pool:
-            job.result()
+            exception = job.exception(timeout=9999999)
+            if exception:
+                raise RuntimeError(exception)
