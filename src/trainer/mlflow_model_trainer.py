@@ -264,7 +264,7 @@ class MachineLearningModelTrainer:
             mlflow.log_artifacts(log_obj)
 
     def set_tags(self, **tags):
-        self.fprint('Setting tags...', end=' ')
+        self.fprint('Setting tags...')
         if not self.mlflow_logging_enabled:
             print(tags)
             return
