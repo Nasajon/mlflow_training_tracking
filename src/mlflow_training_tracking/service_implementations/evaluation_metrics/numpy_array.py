@@ -57,6 +57,7 @@ class EvaluationBinaryClassificationMetricsNumpyArray(EvaluationBinaryClassifica
 
     def __init__(self, probability_threshold):
         self.probability_threshold = probability_threshold
+        self.confusion_matrix_loaded = False
 
     @df_permanently_remove_column(df_variable='y_true', column_property_name='row_id_column')
     @df_permanently_remove_column(df_variable='y_pred', column_property_name='row_id_column')
@@ -65,27 +66,26 @@ class EvaluationBinaryClassificationMetricsNumpyArray(EvaluationBinaryClassifica
             y_true, y_pred, multioutput='uniform_average')
         self.y_true = y_true
         self.y_pred = y_pred
-        self.matrix_loaded = False
 
     @property
     def confusion_matrix(self):
-        if not self.matrix_loaded:
-            self.confusion_matrix = confusion_matrix(
+        if not self.confusion_matrix_loaded:
+            self._confusion_matrix = confusion_matrix(
                 self.y_true, self.y_pred).ravel()
-            self.matrix_loaded = True
-        return self.confusion_matrix
+            self.confusion_matrix_loaded = True
+        return self._confusion_matrix
 
     def true_negative(self):
-        return confusion_matrix[0]
+        return self.confusion_matrix[0]
 
     def false_positive(self):
-        return confusion_matrix[1]
+        return self.confusion_matrix[1]
 
     def false_negative(self):
-        return confusion_matrix[2]
+        return self.confusion_matrix[2]
 
     def true_positive(self):
-        return confusion_matrix[3]
+        return self.confusion_matrix[3]
 
     def precision(self):
         """

@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import math
 from mlflow_training_tracking.service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
 
 
@@ -63,7 +64,7 @@ class EvaluationBinaryClassificationMetricsOperatorInterface(
         tn = self.true_negative()
         fn = self.false_negative()
         x = (tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)
-        return ((tp * tn) - (fp * fn)) / sqrt(x)
+        return ((tp * tn) - (fp * fn)) / math.sqrt(x)
 
     def get_eval_metrics(self, **kwargs):
         metrics = {}
