@@ -1,8 +1,8 @@
 from pandas import DataFrame
 from google.cloud import bigquery
-from mixin.bigquery_mixin import BigQueryMixin
-from helpers.bigquery_location import BigQueryLocation
-from service_interfaces.model_interface import ModelOperatorInterface
+from mlflow_training_tracking.mixin.bigquery_mixin import BigQueryMixin
+from mlflow_training_tracking.helpers.bigquery_location import BigQueryLocation
+from mlflow_training_tracking.service_interfaces.model_interface import ModelOperatorInterface
 
 
 class ModelOperatorBigQueryLocation(ModelOperatorInterface, BigQueryMixin):

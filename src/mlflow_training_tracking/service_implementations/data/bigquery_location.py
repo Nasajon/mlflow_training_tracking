@@ -1,8 +1,8 @@
 from copy import deepcopy
 from google.cloud import bigquery
-from service_interfaces.data_interface import DataOperatorInterface
-from helpers.bigquery_location import BigQueryLocation
-from helpers.default_settings import set_defaults_save_job_config
+from mlflow_training_tracking.service_interfaces.data_interface import DataOperatorInterface
+from mlflow_training_tracking.helpers.bigquery_location import BigQueryLocation
+from mlflow_training_tracking.helpers.default_settings import set_defaults_save_job_config
 
 
 class DataOperatorBigQueryLocation(DataOperatorInterface):

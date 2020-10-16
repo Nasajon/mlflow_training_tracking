@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
+from mlflow_training_tracking.service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
 
 
 class EvaluationBinaryClassificationMetricsOperatorInterface(

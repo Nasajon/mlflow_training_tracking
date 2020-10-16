@@ -1,8 +1,8 @@
 from pandas import DataFrame
 from google.cloud import bigquery
-from mixin.bigquery_mixin import BigQueryMixin
-from helpers.bigquery_location import BigQueryLocation
-from service_implementations.model.bigquery_base import ModelOperatorBigQueryLocation
+from mlflow_training_tracking.mixin.bigquery_mixin import BigQueryMixin
+from mlflow_training_tracking.helpers.bigquery_location import BigQueryLocation
+from mlflow_training_tracking.service_implementations.model.bigquery_base import ModelOperatorBigQueryLocation
 
 
 class RegressionModelOperatorBigQueryLocation(ModelOperatorBigQueryLocation):

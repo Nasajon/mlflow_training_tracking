@@ -1,6 +1,6 @@
-from service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
-from service_implementations.evaluation_metrics.numpy_array import EvaluationRegressionMetricsNumpyArray
-from mixin.bigquery_mixin import BigQueryMixin
+from mlflow_training_tracking.service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
+from mlflow_training_tracking.service_implementations.evaluation_metrics.numpy_array import EvaluationRegressionMetricsNumpyArray
+from mlflow_training_tracking.mixin.bigquery_mixin import BigQueryMixin
 import numpy as np
 from google.cloud import bigquery
 

@@ -1,8 +1,8 @@
 from datetime import datetime
 from google.cloud import bigquery
 from pandas import DataFrame
-from service_implementations.data.dataframe_base import ToDataFrameBase
-from helpers.default_settings import set_defaults_save_job_config
+from mlflow_training_tracking.service_implementations.data.dataframe_base import ToDataFrameBase
+from mlflow_training_tracking.helpers.default_settings import set_defaults_save_job_config
 
 
 class BigQueryToDataFrame(ToDataFrameBase):

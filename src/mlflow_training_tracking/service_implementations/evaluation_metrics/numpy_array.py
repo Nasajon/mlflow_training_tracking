@@ -1,10 +1,10 @@
 from sklearn.metrics import explained_variance_score, mean_absolute_error, mean_squared_error, median_absolute_error, r2_score, max_error
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics._regression import _check_reg_targets
-from service_interfaces.evaluation_regression_metrics_interface import EvaluationRegressionsMetricsOperatorInterface
-from service_interfaces.evaluation_classification_metrics_interface import EvaluationBinaryClassificationMetricsOperatorInterface
+from mlflow_training_tracking.service_interfaces.evaluation_regression_metrics_interface import EvaluationRegressionsMetricsOperatorInterface
+from mlflow_training_tracking.service_interfaces.evaluation_classification_metrics_interface import EvaluationBinaryClassificationMetricsOperatorInterface
 import numpy as np
-from helpers.util import df_permanently_remove_column
+from mlflow_training_tracking.helpers.util import df_permanently_remove_column
 
 
 class EvaluationRegressionMetricsNumpyArray(EvaluationRegressionsMetricsOperatorInterface):
@@ -70,7 +70,8 @@ class EvaluationBinaryClassificationMetricsNumpyArray(EvaluationBinaryClassifica
     @property
     def confusion_matrix(self):
         if not self.matrix_loaded:
-            self.confusion_matrix = confusion_matrix(self.y_true, self.y_pred).ravel()
+            self.confusion_matrix = confusion_matrix(
+                self.y_true, self.y_pred).ravel()
             self.matrix_loaded = True
         return self.confusion_matrix
 
@@ -93,7 +94,7 @@ class EvaluationBinaryClassificationMetricsNumpyArray(EvaluationBinaryClassifica
         The precision is intuitively the ability of the classifier not to label 
         as positive a sample that is negative.
         """
-        return self.true_positive()/(self.true_positive() + self.false_positive())
+        return self.true_positive() / (self.true_positive() + self.false_positive())
 
     def true_positive_rate(self):
         """
@@ -101,11 +102,11 @@ class EvaluationBinaryClassificationMetricsNumpyArray(EvaluationBinaryClassifica
         of true positives and fn the number of false negatives.
         The recall is intuitively the ability of the classifier to find all the positive samples.
         """
-        return self.true_positive()/(self.true_positive() + self.false_negative())
+        return self.true_positive() / (self.true_positive() + self.false_negative())
 
     def true_negative_rate(self):
         """
         Specificity (true_negative_rate) measures the proportion of negatives that are correctly identified
         tn / (tn + fp)
         """
-        return self.true_negative()/(self.true_negative() + self.false_positive())
+        return self.true_negative() / (self.true_negative() + self.false_positive())

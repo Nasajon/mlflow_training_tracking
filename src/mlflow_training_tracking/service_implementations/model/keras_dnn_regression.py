@@ -2,8 +2,8 @@ import os
 from copy import deepcopy
 import pandas as pd
 from tensorflow import keras
-from service_interfaces.model_interface import ModelOperatorInterface
-from helpers.util import df_temporary_remove_column, df_permanently_remove_column
+from mlflow_training_tracking.service_interfaces.model_interface import ModelOperatorInterface
+from mlflow_training_tracking.helpers.util import df_temporary_remove_column, df_permanently_remove_column
 
 
 class KerasRegressionModelOperatorDataFrame(keras.Sequential, ModelOperatorInterface):

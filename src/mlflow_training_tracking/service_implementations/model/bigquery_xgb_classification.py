@@ -1,4 +1,4 @@
-from service_implementations.model.bigquery_regression import ClassficationModelOperatorBigQueryLocation
+from mlflow_training_tracking.service_implementations.model.bigquery_regression import ClassficationModelOperatorBigQueryLocation
 
 
 class BigQueryXGBClassificationModelOperatorBigQueryLocation(ClassficationModelOperatorBigQueryLocation):

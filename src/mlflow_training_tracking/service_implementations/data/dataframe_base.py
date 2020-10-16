@@ -1,6 +1,6 @@
 from pandas import DataFrame
 import pandas as pd
-from service_interfaces.data_interface import DataOperatorInterface
+from mlflow_training_tracking.service_interfaces.data_interface import DataOperatorInterface
 
 
 class ToDataFrameBase(DataOperatorInterface):
