@@ -23,6 +23,17 @@ def prepend_key(data_obj: object, prepend: str):
         return [prepend_key(list_obj, prepend) for list_obj in data_obj]
 
 
+def truncate_log_param(data_obj: object):
+    if isinstance(data_obj, dict):
+        copy_dict = {}
+        for key in data_obj.keys():
+            copy_dict[key] = str(data_obj[key])[:250]
+        return copy_dict
+
+    if isinstance(data_obj, str):
+        return data_obj[:250]
+
+
 class MachineLearningModelTrainer:
     MAX_AIO_TASKS = 15
 
@@ -251,6 +262,7 @@ class MachineLearningModelTrainer:
 
         if _type == 'params' and self.mlflow_param_logging_enabled:
             log_obj = prepend_key(log_obj, prepend)
+            log_obj = truncate_log_param(log_obj)
             mlflow.log_params(log_obj)
 
         if _type == 'metrics' and self.mlflow_metric_logging_enabled:
