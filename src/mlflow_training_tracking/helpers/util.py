@@ -43,6 +43,7 @@ def df_temporary_remove_column(df_variable: str, column_property_name: str):
 def df_permanently_remove_column(df_variable: str, column_property_name: str):
     """
     Decorator to permanently remove column from data frame
+    Always key work arguments when calling the decorated functions
     """
 
     @functools.wraps(df_variable, column_property_name)
