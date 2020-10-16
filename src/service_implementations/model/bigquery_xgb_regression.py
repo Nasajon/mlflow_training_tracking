@@ -1,7 +1,7 @@
-from service_implementations.model.bigquery_base import ModelOperatorBigQueryLocation
+from service_implementations.model.bigquery_regression import RegressionModelOperatorBigQueryLocation
 
 
-class BigQueryXGBRegressionModelOperatorBigQueryLocation(ModelOperatorBigQueryLocation):
+class BigQueryXGBRegressionModelOperatorBigQueryLocation(RegressionModelOperatorBigQueryLocation):
     model_type = "BigQuery BOOSTED_TREE_REGRESSOR"
 
     def __init__(self, model_parameters, **kwargs):

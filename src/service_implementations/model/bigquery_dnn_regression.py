@@ -1,7 +1,7 @@
-from service_implementations.model.bigquery_base import ModelOperatorBigQueryLocation
+from service_implementations.model.bigquery_regression import RegressionModelOperatorBigQueryLocation
 
 
-class BigQueryDNNRegressionModelOperatorBigQueryLocation(ModelOperatorBigQueryLocation):
+class BigQueryDNNRegressionModelOperatorBigQueryLocation(RegressionModelOperatorBigQueryLocation):
     model_type = "BigQuery DNN_REGRESSOR"
 
     def __init__(self, model_parameters, **kwargs):
