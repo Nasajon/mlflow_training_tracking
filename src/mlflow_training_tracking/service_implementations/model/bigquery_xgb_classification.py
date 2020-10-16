@@ -1,7 +1,7 @@
-from mlflow_training_tracking.service_implementations.model.bigquery_regression import ClassficationModelOperatorBigQueryLocation
+from mlflow_training_tracking.service_implementations.model.bigquery_classification import ClassificationModelOperatorBigQueryLocation
 
 
-class BigQueryXGBClassificationModelOperatorBigQueryLocation(ClassficationModelOperatorBigQueryLocation):
+class BigQueryXGBClassificationModelOperatorBigQueryLocation(ClassificationModelOperatorBigQueryLocation):
     model_type = "BigQuery BOOSTED_TREE_CLASSIFIER"
 
     def __init__(self, model_parameters, **kwargs):

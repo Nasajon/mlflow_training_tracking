@@ -1,7 +1,7 @@
-from mlflow_training_tracking.service_implementations.model.bigquery_regression import RegressionModelOperatorBigQueryLocation
+from mlflow_training_tracking.service_implementations.model.bigquery_classification import ClassificationModelOperatorBigQueryLocation
 
 
-class BigQueryDNNRegressionModelOperatorBigQueryLocation(RegressionModelOperatorBigQueryLocation):
+class BigQueryDNNClassificationModelOperatorBigQueryLocation(ClassificationModelOperatorBigQueryLocation):
     model_type = "BigQuery DNN_CLASSIFIER"
 
     def __init__(self, model_parameters, **kwargs):
