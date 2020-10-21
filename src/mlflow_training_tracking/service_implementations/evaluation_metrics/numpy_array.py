@@ -55,17 +55,22 @@ class EvaluationRegressionMetricsNumpyArray(EvaluationRegressionsMetricsOperator
 
 class EvaluationBinaryClassificationMetricsNumpyArray(EvaluationBinaryClassificationMetricsOperatorInterface):
 
-    def __init__(self, probability_threshold):
+    def __init__(self, probability_threshold=0.5):
         self.probability_threshold = probability_threshold
         self.confusion_matrix_loaded = False
 
     @df_permanently_remove_column(df_variable='y_true', column_property_name='row_id_column')
     @df_permanently_remove_column(df_variable='y_pred', column_property_name='row_id_column')
-    def load_data(self, y_true, y_pred, *args, **kwargs):
+    def load_data(self, y_true: 'DataFrame', y_pred: 'DataFrame', *args, **kwargs):
+        """TODO: Rename class fo clarify it receives a dataframe and cast to numpyarray
+        Args:
+            y_true (DataFrame): ground truth
+            y_pred (DataFrame): predicted probabilities for positive class
+        """
         y_type, y_true, y_pred, multioutput = _check_reg_targets(
             y_true, y_pred, multioutput='uniform_average')
         self.y_true = y_true
-        self.y_pred = y_pred
+        self.y_pred = y_pred > self.probability_threshold
 
     @property
     def confusion_matrix(self):
