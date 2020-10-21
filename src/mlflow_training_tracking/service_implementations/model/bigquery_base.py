@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from pandas import DataFrame
 from google.cloud import bigquery
 from mlflow_training_tracking.mixin.bigquery_mixin import BigQueryMixin
@@ -18,11 +19,6 @@ AS (
 )
 """
 
-    predict_query = """
-SELECT {id_column}, predicted_{target_column} FROM ML.PREDICT(MODEL `{sql_model_path}`, ({predict_query}))
-ORDER BY {order}
-"""
-
     train_metric_query = """
 SELECT * FROM ML.TRAINING_INFO(MODEL `{sql_model_path}`) ORDER BY iteration
 """
@@ -32,6 +28,16 @@ SELECT * FROM ML.FEATURE_IMPORTANCE (MODEL `{sql_model_path}`)
 """
 
     job_id_prefix = 'mlflow_model_'
+
+    @property
+    @abstractmethod
+    def predict_query(self):
+        raise NotImplemented
+
+    @property
+    @abstractmethod
+    def prediction_column_name(self):
+        raise NotImplemented
 
     def __init__(self, project, dataset, _id, version, model_parameters, training_parameters):
         super().__init__(_id=_id, version=version,
@@ -82,19 +88,24 @@ SELECT * FROM ML.FEATURE_IMPORTANCE (MODEL `{sql_model_path}`)
 
     def predict(self, x_uri: str, *args, **kwargs) -> None:
         target_column = self.input_label_col
-        predict_query = self.predict_query.format(id_column=x_uri.id_column,
-                                                  target_column=target_column,
-                                                  sql_model_path=self.sql_model_path,
-                                                  predict_query=x_uri.get_select_query(
-                                                      include_id=True),
-                                                  order=x_uri.order)
+        predict_query = self.predict_query.format(
+            id_column=x_uri.id_column,
+            target_column=target_column,
+            sql_model_path=self.sql_model_path,
+            predict_query=x_uri.get_select_query(
+                include_id=True),
+            order=x_uri.order
+        )
         query_job = self.run_query_and_wait(predict_query,
                                             job_id_prefix=self.job_id_prefix)
         destination = query_job.destination
-        destination_location = BigQueryLocation(data_columns=[f'predicted_{target_column}'],
-                                                id_column=x_uri.id_column,
-                                                table=f'{destination.project}.{destination.dataset_id}.{destination.table_id}',
-                                                order=x_uri.order)
+        destination_location = BigQueryLocation(
+            data_columns=[self.prediction_column_name.format(
+                target_column=target_column)],
+            id_column=x_uri.id_column,
+            table=f'{destination.project}.{destination.dataset_id}.{destination.table_id}',
+            order=x_uri.order
+        )
         return destination_location
 
     def save(self, folder_path: str, *args, **kwargs) -> None:

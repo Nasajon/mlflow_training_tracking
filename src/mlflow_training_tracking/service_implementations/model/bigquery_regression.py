@@ -6,4 +6,8 @@ from mlflow_training_tracking.service_implementations.model.bigquery_base import
 
 
 class RegressionModelOperatorBigQueryLocation(ModelOperatorBigQueryLocation):
-    pass
+    prediction_column_name = "predicted_{target_column}"
+    predict_query = """
+SELECT {{id_column}}, {prediction_column_name} FROM ML.PREDICT(MODEL `{{sql_model_path}}`, ({{predict_query}}))
+ORDER BY {{order}}
+""".format(prediction_column_name=prediction_column_name)

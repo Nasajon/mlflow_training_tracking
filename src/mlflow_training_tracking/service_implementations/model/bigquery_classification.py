@@ -6,4 +6,10 @@ from mlflow_training_tracking.service_implementations.model.bigquery_base import
 
 
 class ClassificationModelOperatorBigQueryLocation(ModelOperatorBigQueryLocation):
-    pass
+    prediction_column_name = "predicted_{target_column}_proba_1"
+    predict_query = """
+SELECT {{id_column}}, unn_proba.prob AS {prediction_column_name} FROM ML.PREDICT(MODEL `{{sql_model_path}}`, ({{predict_query}}))
+CROSS JOIN UNNEST(predicted_{{target_column}}_probs) AS unn_proba
+WHERE label = 1
+ORDER BY {{order}}
+""".format(prediction_column_name=prediction_column_name)
