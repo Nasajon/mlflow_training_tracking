@@ -25,8 +25,7 @@ class DataOperatorBigQueryLocation(DataOperatorInterface):
         eval_data = deepcopy(self.eval_uri)
 
         self.train_y = train_data.copy()
-        self.train_y.update(
-            {'data_columns': []})
+        self.train_y.update({'data_columns': []})
         self.train_x = train_data.copy()
 
         # eval_data['columns'].remove(self.target_column)
@@ -34,8 +33,6 @@ class DataOperatorBigQueryLocation(DataOperatorInterface):
         self.eval_y.update(
             {'data_columns': []})
         self.eval_x = eval_data.copy()
-
-        return self
 
     def get_train_x(self) -> str:
         return BigQueryLocation(**self.train_x, id_column=self.row_id_column)
