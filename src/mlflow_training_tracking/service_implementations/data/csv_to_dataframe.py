@@ -1,6 +1,6 @@
 from pandas import DataFrame
 import pandas as pd
-from mlflow_training_tracking.service_implementations.data.dataframe_base import ToDataFrameBase
+from mlflow_training_tracking.service_implementations.data.to_dataframe_base import ToDataFrameBase
 
 
 class FileToDataFrame(ToDataFrameBase):
