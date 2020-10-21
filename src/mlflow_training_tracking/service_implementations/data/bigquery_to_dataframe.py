@@ -1,7 +1,7 @@
+import warnings
 from datetime import datetime
 from google.cloud import bigquery
-from pandas import DataFrame
-from mlflow_training_tracking.service_implementations.data.dataframe_base import ToDataFrameBase
+from mlflow_training_tracking.service_implementations.data.to_dataframe_base import ToDataFrameBase
 from mlflow_training_tracking.helpers.default_settings import set_defaults_save_job_config
 
 
@@ -20,6 +20,14 @@ class BigQueryToDataFrame(ToDataFrameBase):
         Returns:
             self
         """
+
+        formatwarning_orig = warnings.formatwarning
+        warnings.formatwarning = lambda message, category, filename, lineno, line=None: formatwarning_orig(
+            message, category, filename, lineno, line='')
+        warnings.warn("Use bigquery_location_to_dataframe",
+                      DeprecationWarning)
+        warnings.formatwarning = formatwarning_orig
+
         super().__init__(
             train_uri, eval_uri, target_column, row_id_column,
             predictions_dataset=predictions_dataset,
@@ -43,7 +51,7 @@ class BigQueryToDataFrame(ToDataFrameBase):
         super().load_data(train_df=train_df, eval_df=eval_df)
         self.data_loaded = True
 
-    def _save_predicted_data(self, data_uri: DataFrame, partition: str):
+    def _save_predicted_data(self, data_uri: 'DataFrame', partition: str):
         df = data_uri.copy()
         df['mlflow_experiment_name'] = str(self.mlflow_experiment_name)
         df['model_id'] = str(self.model_id)
@@ -62,13 +70,13 @@ class BigQueryToDataFrame(ToDataFrameBase):
         )
         self.job_pool.append(job)
 
-    def save_predicted_train_data(self, data_uri: DataFrame):
+    def save_predicted_train_data(self, data_uri: 'DataFrame'):
         self._save_predicted_data(
             data_uri,
             partition='train'
         )
 
-    def save_predicted_eval_data(self, data_uri: DataFrame):
+    def save_predicted_eval_data(self, data_uri: 'DataFrame'):
         self._save_predicted_data(
             data_uri,
             partition='eval'
