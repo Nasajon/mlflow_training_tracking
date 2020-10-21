@@ -16,8 +16,12 @@ class XGBRegressionModelOperatorDataFrame(xgb.XGBRegressor, ModelOperatorInterfa
         self.model_parameters = model_parameters
         self.training_parameters = training_parameters
         xgb.XGBRegressor.__init__(self, **model_parameters)
-        ModelOperatorInterface.__init__(self, _id=_id, version=version,
-                                        model_parameters=model_parameters, training_parameters=training_parameters)
+        ModelOperatorInterface.__init__(
+            self, _id=_id,
+            version=version,
+            model_parameters=model_parameters,
+            training_parameters=training_parameters
+        )
 
     def load(self, folder_path):
         path = os.path.join(folder_path, self.model_id_version)
