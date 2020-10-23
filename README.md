@@ -141,4 +141,5 @@ Known issues:
 
 Future work:
 - Add test dataset
+- Substitute print for logging
 
