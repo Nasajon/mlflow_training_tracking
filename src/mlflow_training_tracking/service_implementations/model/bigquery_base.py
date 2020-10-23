@@ -46,8 +46,19 @@ SELECT * FROM ML.FEATURE_IMPORTANCE (MODEL `{sql_model_path}`)
         self.dataset = dataset
         self.client = bigquery.Client()
         self.model_id_version = f'{self.id}_{self.version}'
-        self.sql_model_path = f'{self.project}.{self.dataset}.{self.model_id_version}'
+        self.sql_model_path_format = '{project}.{dataset}.{experiment}_{model_id_version}'
         self.training_enabled = True
+
+    def setup(self, row_id_column, target_column, mlflow_experiment_name, **kwargs):
+        super().setup(row_id_column, target_column,
+                      mlflow_experiment_name=mlflow_experiment_name, **kwargs)
+        self.mlflow_experiment_name = mlflow_experiment_name
+        self.sql_model_path = self.sql_model_path_format.format(
+            project=self.project,
+            dataset=self.dataset,
+            experiment=self.mlflow_experiment_name,
+            model_id_version=self.model_id_version
+        )
 
     def disable_training(self):
         self.training_enabled = False
