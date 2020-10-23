@@ -11,8 +11,14 @@ class ExceptionBuilder:
     def set_messages(self, messages):
         self.messages = messages
 
-    def raise_exception_if_exist(self, exception_class=Exception):
+    def raise_exception_if_exist(self):
         if len(self.messages) == 0:
             return
         messages = self.separator.join(self.messages)
         raise self.exception(messages)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.raise_exception_if_exist()

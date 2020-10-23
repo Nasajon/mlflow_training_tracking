@@ -54,18 +54,16 @@ class MachineLearningModelTrainer:
                  mlflow_artifact_logging_enabled=True,
                  mlflow_logging_enabled=True):
 
-        exception_builder = ExceptionBuilder(
-            exception=TypeError, separator='; ')
-        if not isinstance(model_interface, ModelOperatorInterface):
-            exception_builder.add_message(
-                "model_interface must be a instance of ModelOperatorInterface.")
-        if not isinstance(data_interface, DataOperatorInterface):
-            exception_builder.add_message(
-                "data_interface must be a instance of DataOperatorInterface.")
-        if not isinstance(metrics_interface, EvaluationMetricsOperatorInterface):
-            exception_builder.add_message(
-                "metrics_interface must be a instance of EvaluationMetricsOperatorInterface.")
-        exception_builder.raise_exception_if_exist()
+        with ExceptionBuilder(exception=TypeError, separator='; ') as exception_builder:
+            if not isinstance(model_interface, ModelOperatorInterface):
+                exception_builder.add_message(
+                    "model_interface must be a instance of ModelOperatorInterface.")
+            if not isinstance(data_interface, DataOperatorInterface):
+                exception_builder.add_message(
+                    "data_interface must be a instance of DataOperatorInterface.")
+            if not isinstance(metrics_interface, EvaluationMetricsOperatorInterface):
+                exception_builder.add_message(
+                    "metrics_interface must be a instance of EvaluationMetricsOperatorInterface.")
 
         self.model_interface = model_interface
         self.data_interface = data_interface
