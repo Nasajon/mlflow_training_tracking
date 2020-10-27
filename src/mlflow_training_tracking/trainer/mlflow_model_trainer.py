@@ -7,20 +7,21 @@ from mlflow_training_tracking.service_interfaces.data_interface import DataOpera
 from mlflow_training_tracking.service_interfaces.model_interface import ModelOperatorInterface
 from mlflow_training_tracking.service_interfaces.evaluation_metrics_interface import EvaluationMetricsOperatorInterface
 from mlflow_training_tracking.helpers.exception_builder import ExceptionBuilder
+from mlflow_training_tracking.helpers.logging_service import LoggingService
 
 
-def prepend_key(data_obj: object, prepend: str):
+def prepend_key(data_obj: object, prefix: str):
     if isinstance(data_obj, dict):
         prepended_dict = {}
         for key in data_obj.keys():
-            prepended_dict[prepend + str(key)] = data_obj.get(key)
+            prepended_dict[prefix + str(key)] = data_obj.get(key)
         return prepended_dict
 
     if isinstance(data_obj, str):
-        return prepend + data_obj
+        return prefix + data_obj
 
     if isinstance(data_obj, list):
-        return [prepend_key(list_obj, prepend) for list_obj in data_obj]
+        return [prepend_key(list_obj, prefix) for list_obj in data_obj]
 
 
 def truncate_log_param(data_obj: object):
@@ -52,7 +53,8 @@ class MachineLearningModelTrainer:
                  mlflow_param_logging_enabled=True,
                  mlflow_metric_logging_enabled=True,
                  mlflow_artifact_logging_enabled=True,
-                 mlflow_logging_enabled=True):
+                 mlflow_logging_enabled=True,
+                 logging_service=None):
 
         with ExceptionBuilder(exception=TypeError, separator='; ') as exception_builder:
             if not isinstance(model_interface, ModelOperatorInterface):
@@ -80,6 +82,10 @@ class MachineLearningModelTrainer:
         self.error_log_name = 'model_trainer_error.log'
         self.log_path = os.path.join(self.log_folder_path,
                                      self.log_name)
+        self.logger = logging_service if logging_service is not None else LoggingService(
+            logname=self.run_id,
+            filename=self.log_path).get_logger()
+
         self.error_log_path = os.path.join(self.log_folder_path,
                                            self.error_log_name)
 
@@ -124,7 +130,8 @@ class MachineLearningModelTrainer:
             'model_version': self.model_version,
             'mlflow_experiment_name': self.mlflow_experiment_name,
             'row_id_column': self.row_id_column,
-            'target_column': self.target_column
+            'target_column': self.target_column,
+            'logger': self.logger,
         }
         self.data_interface.setup(**setup)
         self.model_interface.setup(**setup)
@@ -217,23 +224,21 @@ class MachineLearningModelTrainer:
         predictions = self.model_interface.predict(x_uri=data)
         return predictions
 
-    def fprint(self, text, end='\n'):
-        now = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S.%f")
-        print(f'{now}- MFTT - {text}', end=end, flush=True)
+    def fprint(self, text, end='\n', log_type='info'):
+        getattr(self.logger, log_type)(text)
 
     def raise_task(self, task_set):
         for task in task_set:
             if task.exception():
                 raise task.exception()
 
-    async def async_log(self, _type, log_obj, prepend=''):
+    async def async_log(self, _type, log_obj, prefix=''):
         # self.fprint(f"Addeding log to async tasks.")
 
         if isinstance(log_obj, list):
             log_obj = log_obj.copy()
             for list_obj in log_obj:
-                await self.async_log(_type, list_obj, prepend)
+                await self.async_log(_type, list_obj, prefix)
             return
         if isinstance(log_obj, dict):
             log_obj = log_obj.copy()
@@ -245,26 +250,26 @@ class MachineLearningModelTrainer:
             self.raise_task(_done)
 
         self.aio_tasks.add(aio.create_task(
-            self._async_log(_type, log_obj, prepend)))
+            self._async_log(_type, log_obj, prefix)))
 
     @force_async
-    def _async_log(self, _type, log_obj, prepend):
-        self.__log(_type, log_obj, prepend)
+    def _async_log(self, _type, log_obj, prefix):
+        self.__log(_type, log_obj, prefix)
 
-    def __log(self, _type, log_obj, prepend=''):
+    def __log(self, _type, log_obj, prefix=''):
         self.fprint(f"Logging {_type}...")
 
         if not self.mlflow_logging_enabled:
-            print(log_obj)
+            self.fprint(log_obj)
             return
 
         if _type == 'params' and self.mlflow_param_logging_enabled:
-            log_obj = prepend_key(log_obj, prepend)
+            log_obj = prepend_key(log_obj, prefix)
             log_obj = truncate_log_param(log_obj)
             mlflow.log_params(log_obj)
 
         if _type == 'metrics' and self.mlflow_metric_logging_enabled:
-            log_obj['metrics'] = prepend_key(log_obj['metrics'], prepend)
+            log_obj['metrics'] = prepend_key(log_obj['metrics'], prefix)
             mlflow.log_metrics(**log_obj)
 
         if _type == 'artifact' and self.mlflow_artifact_logging_enabled:
@@ -276,27 +281,27 @@ class MachineLearningModelTrainer:
     def set_tags(self, **tags):
         self.fprint('Setting tags...')
         if not self.mlflow_logging_enabled:
-            print(tags)
+            self.fprint(tags)
             return
         mlflow.set_tags(tags)
         # self.fprint('Done.')
 
     async def _pipeline(self):
         try:
-            print('*' * 20)
-            print('*     Starting     *')
-            print('*' * 20)
+            self.fprint('*' * 20)
+            self.fprint('*     Starting     *')
+            self.fprint('*' * 20)
             self.fprint(f'Model Run: {self.run_id}')
             self.set_tags(model_id=self.model_id,
                           version=self.model_version,
                           state='running',
                           model_type=self.model_interface.model_type,
                           **self.experiment_tags)
-            await self.async_log('params', self.experiment_parameters, prepend='exp.')
-            await self.async_log('params', self.data_interface.get_parameters(), prepend='data.')
-            await self.async_log('params', self.model_interface.get_model_parameters(), prepend='model.')
+            await self.async_log('params', self.experiment_parameters, prefix='exp.')
+            await self.async_log('params', self.data_interface.get_parameters(), prefix='data.')
+            await self.async_log('params', self.model_interface.get_model_parameters(), prefix='model.')
             await self.async_log('params', self.model_interface.get_training_parameters(),
-                                 prepend='training.')
+                                 prefix='training.')
 
             self.setup_interfaces()
             self.load_data()
@@ -305,25 +310,26 @@ class MachineLearningModelTrainer:
             self.save_predictions()
 
             await self.async_log('metrics', self.get_train_metrics(),
-                                 prepend='training.')
-            await self.async_log('metrics', self.get_eval_metrics(), prepend='eval.')
+                                 prefix='training.')
+            await self.async_log('metrics', self.get_eval_metrics(), prefix='eval.')
             for metric in self.custom_eval_metrics:
                 metric_value = getattr(self.metrics_interface, metric)()
-                await self.async_log('metrics', metric_value, prepend='custom.')
+                await self.async_log('metrics', metric_value, prefix='custom.')
             for metric in self.custom_train_metrics:
                 metric_value = getattr(self.model_interface, metric)()
-                await self.async_log('metrics', metric_value, prepend='custom.')
+                await self.async_log('metrics', metric_value, prefix='custom.')
             self.save_model()
             await self.async_log('artifacts', self.run_folder_path)
             self.set_tags(state='success')
 
         except Exception as e:
-            print('\n\n\n')
+            self.fprint('\n\n\n')
             self.fprint('Run Failed')
             self.set_tags(state='failed')
             import traceback
-            print(traceback.format_exc())
+            self.fprint(traceback.format_exc())
             with open(self.error_log_path, 'w') as f:
+                self.fprint(str(e))
                 f.write(str(e))
                 f.write(traceback.format_exc())
             await self.async_log('artifact', self.error_log_path)
