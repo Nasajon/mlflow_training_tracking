@@ -5,21 +5,22 @@ from logging.handlers import RotatingFileHandler
 
 
 class LoggingService:
-    __logger = None
+    #__logger = None
 
     def __init__(self, logname, filename=None):
-        if LoggingService.__logger is not None:
-            raise RuntimeError("LoggingService already initialized")
+        #if LoggingService.__logger is not None:
+        #    raise RuntimeError("LoggingService already initialized")
         self.filename = filename
         self.logname = logname
+        self.__logger = None
 
     def get_logger(self):
-        if LoggingService.__logger is None:
-            LoggingService.__logger = logging.getLogger(self.logname)
-            LoggingService.__logger.setLevel(level=logging.DEBUG)
+        if self.__logger is None:
+            self.__logger = logging.getLogger(self.logname)
+            self.__logger.setLevel(level=logging.DEBUG)
             for handler in self._get_handlers():
-                LoggingService.__logger.addHandler(handler)
-        return LoggingService.__logger
+                self.__logger.addHandler(handler)
+        return self.__logger
 
     def _get_handlers(self):
         handlers = set()
