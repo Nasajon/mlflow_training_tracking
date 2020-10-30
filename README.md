@@ -142,5 +142,5 @@ Known issues:
 Future work:
 - Add test dataset
 - Add get_artifacts equivalent of get_metrics functionality for model and metrics interface
-- Add descriptive statistics like means, median, stddev, quartiles of each column somewhere, somehow
-
+- Add descriptive statistics like means, median, stddev, quartiles of each column somewhere, somehow 
+- Implement DNN training metrics
